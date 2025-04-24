@@ -16,6 +16,7 @@ export class MeilisearchService extends BaseService {
     }
     return MeilisearchService.instance
   }
+  
   async search(params: MsSearchParams): Promise<MeilisearchResponse> {
     const {
       query,

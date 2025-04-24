@@ -1,6 +1,6 @@
 {
   "name": "@misiki/medusa-connector",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A powerful API connector for integrating Medusa with svelte-commerce platform",
   "type": "module",
   "main": "./dist/index.cjs",
