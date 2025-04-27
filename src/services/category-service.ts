@@ -1,50 +1,97 @@
-import type { Category, PaginatedResponse } from './../types'
+import type { Category, PaginatedResponse } from '$lib/types'
+import { ApiService } from './api-service'
 
-import { BaseService } from './base.service'
+export class CategoryService {
+	// For storefront (public access)
+	static async fetchFooterCategories({
+		page = 1,
+		q = '',
+		sort = '-created_at',
+		limit = 20
+	}: {
+		page?: number
+		q?: string
+		sort?: string
+		limit?: number
+	}) {
+		const offset = (page - 1) * limit
+		return ApiService.get<PaginatedResponse<Category>>(`/store/product-categories?limit=${limit}&offset=${offset}&q=${q}&order=${sort}`)
+	}
 
-export class CategoryService extends BaseService {
-  private static instance: CategoryService
+	// For storefront (public access)
+	static async fetchFeaturedCategories({ limit = 100 }: { limit?: number }) {
+		return ApiService.get<PaginatedResponse<Category>>(`/store/product-categories?limit=${limit}&is_featured=true`)
+	}
 
-  /**
-   * Get the singleton instance
-   */
-  static getInstance(): CategoryService {
-    if (!CategoryService.instance) {
-      CategoryService.instance = new CategoryService()
-    }
-    return CategoryService.instance
-  }
-  async fetchFooterCategories({ page = 1, q = '', sort = '-createdAt' }) {
-    return this.get(
-      `/api/categories?page=${page}&q=${q}&sort=${sort}`
-    ) as Promise<PaginatedResponse<Category>>
-  }
-  async fetchFeaturedCategories({ limit = 100 }) {
-    return this.get(`/api/categories/featured?limit=${limit}`) as Promise<
-      PaginatedResponse<Category>
-    >
-  }
+	// For storefront (public access)
+	static async fetchCategory(id: string) {
+		return ApiService.get<Category>(`/store/product-categories/${id}`)
+	}
 
-  async fetchCategory(id: string) {
-    return this.get(`/api/product-categories?handle=${id}`) as Promise<Category>
-  }
+	// For storefront (public access)
+	static async fetchAllCategories({ limit = 100 }: { limit?: number }) {
+		return ApiService.get<PaginatedResponse<Category>>(`/store/product-categories?limit=${limit}&expand=products`)
+	}
 
-  async fetchAllCategories() {
-    return this.get('/api/categories') as Promise<PaginatedResponse<Category>>
-  }
+	// For storefront (public access)
+	static async fetchAllProductsOfCategory(id: string) {
+		return ApiService.get<Category>(`/store/product-categories/${id}?expand=products`)
+	}
 
-  async fetchAllProductsOfCategories(id) {
-    return this.get(`/api/product-categories?handle=${id}`) as Promise<
-      PaginatedResponse<Category>
-    >
-  }
+	// For storefront (public access)
+	static async getMegamenu() {
+		return ApiService.get<PaginatedResponse<Category>>('/store/product-categories?parent_category_id=null&include_descendants_tree=true')
+	}
 
-  async getMegamenu() {
-    return this.get('/api/categories/megamenu') as Promise<
-      PaginatedResponse<Category>
-    >
-  }
+	// ADMIN-ONLY METHODS
+
+	// For admin dashboard
+	static async listAdminCategories({
+		page = 1,
+		q = '',
+		sort = '-created_at',
+		limit = 20
+	}: {
+		page?: number
+		q?: string
+		sort?: string
+		limit?: number
+	}) {
+		const offset = (page - 1) * limit
+		return ApiService.get<PaginatedResponse<Category>>(`/admin/product-categories?limit=${limit}&offset=${offset}&q=${q}&order=${sort}`)
+	}
+
+	// For admin dashboard
+	static async createCategory(payload: {
+		name: string
+		description?: string
+		parent_category_id?: string
+		is_internal?: boolean
+		is_active?: boolean
+	}) {
+		return ApiService.post<Category>('/admin/product-categories', payload)
+	}
+
+	// For admin dashboard
+	static async updateCategory(
+		id: string,
+		payload: Partial<{
+			name: string
+			description: string
+			parent_category_id: string
+			is_internal: boolean
+			is_active: boolean
+		}>
+	) {
+		return ApiService.post<Category>(`/admin/product-categories/${id}`, payload)
+	}
+
+	// For admin dashboard
+	static async deleteCategory(id: string) {
+		return ApiService.delete<{
+			id: string
+			object: 'product-category'
+			deleted: boolean
+		}>(`/admin/product-categories/${id}`)
+	}
 }
-
-// // Use singleton instance
-export const categoryService = CategoryService.getInstance()

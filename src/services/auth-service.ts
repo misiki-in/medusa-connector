@@ -1,35 +1,23 @@
-import type { User, verifyEmail } from '../types'
-import { BaseService } from './base.service'
+import type { User, verifyEmail } from '$lib/types'
+import { ApiService } from './api-service'
 
-/**
- * Service for managing address
- * This class can be moved to another project easily
- */
-export class AuthService extends BaseService {
-	private static instance: AuthService
-
-	/**
-	 * Get the singleton instance
-	 */
-	static getInstance(): AuthService {
-		if (!AuthService.instance) {
-			AuthService.instance = new AuthService()
-		}
-		return AuthService.instance
-	}
-	async getMe() {
-		return this.get('/api/admin/users/me') as Promise<User>
+export class AuthService {
+	static async getMe() {
+		return ApiService.get<User>('/store/customers/me')
 	}
 
-	async get(id: string) {
-		return this.get('/api/users/' + id) as Promise<User>
+	static async get(id: string) {
+		return ApiService.get<User>(`/store/customers/${id}`)
 	}
 
-	async verifyEmail(email: string, token: string) {
-		return this.post('/api/auth/verify-email', { email, token }) as Promise<verifyEmail>
+	static async verifyEmail(email: string, token: string) {
+		return ApiService.post<verifyEmail>('/auth/customer/email/verify', {
+			email,
+			token
+		})
 	}
 
-	async signup({
+	static async signup({
 		firstName,
 		lastName,
 		phone,
@@ -46,24 +34,30 @@ export class AuthService extends BaseService {
 		passwordConfirmation: string
 		cartId?: string | null
 	}) {
-		return this.post('/api/auth/signup', {
-			firstName,
-			lastName,
-			phone,
+		const payload = {
+			first_name: firstName,
+			last_name: lastName,
 			email,
 			password,
-			cartId
-		}) as Promise<User>
+			phone
+		}
+
+		const response = await ApiService.post<User>('/store/customers', payload)
+
+		// If cartId exists, associate the cart with the new customer
+	
+
+		return response
 	}
 
-	async joinAsVendor({
+	static async joinAsVendor({
 		firstName,
 		lastName,
 		businessName,
 		phone,
 		email,
 		password,
-		cartId = null,
+	
 		role,
 		origin
 	}: {
@@ -73,24 +67,24 @@ export class AuthService extends BaseService {
 		phone: string
 		email: string
 		password: string
-		cartId?: string | null
 		role: string
 		origin: string
 	}) {
-		return this.post('/api/auth/join-as-vendor', {
-			firstName,
-			lastName,
-			businessName,
+		// Note: Medusa might not have a direct equivalent for vendor registration
+		// This implementation assumes a custom endpoint would be added in Medusa
+		return ApiService.post<User>('/auth/customer/email/register', {
+			first_name: firstName,
+			last_name: lastName,
+			business_name: businessName,
 			phone,
 			email,
 			password,
-			cartId,
 			role,
 			origin
-		}) as Promise<User>
+		})
 	}
 
-	async joinAsAdmin({
+	static async joinAsAdmin({
 		firstName,
 		lastName,
 		businessName,
@@ -107,66 +101,67 @@ export class AuthService extends BaseService {
 		password: string
 		origin: string
 	}) {
-		return this.post('/api/auth/join-as-admin', {
-			firstName,
-			lastName,
-			businessName,
+		// Note: Medusa separates admin APIs, this would typically be handled differently
+		// For consistency with the original function, we'll keep it but note the limitation
+		return ApiService.post<User>('/admin/auth/register', {
+			first_name: firstName,
+			last_name: lastName,
+			business_name: businessName,
 			phone,
 			email,
 			password,
 			origin
-		}) as Promise<User>
+		})
 	}
 
-	async login({
-		email,
-		password,
-		cartId = null
-	}: {
-		email: string
-		password: string
-		cartId?: string | null
-	}) {
-		return this.post('/api/auth/login', { email, password, cartId }) as Promise<User>
+	static async login({ email, password, cartId = null }: { email: string; password: string; cartId?: string | null }) {
+		const response = await ApiService.post<User>('/auth/session', {
+			email,
+			password
+		})
+
+		
+		return response
 	}
 
-	async forgotPassword({ email, referrer }: { email: string; referrer: string }) {
-		return this.post('/api/auth/forgot-password', { email, referrer }) as Promise<User>
+	static async forgotPassword({ email, referrer }: { email: string; referrer: string }) {
+		return ApiService.post<User>('/auth/customer/email/reset-password', {
+			email,
+			referrer
+		})
 	}
 
-	async changePassword(body: { old: string; password: string }) {
-		return this.post('/api/admin/auth/change-password', body) as Promise<User>
+	static async changePassword(body: { old: string; password: string }) {
+		return ApiService.post<User>('/auth/customer/email/update', {
+			old_password: body.old,
+			new_password: body.password
+		})
 	}
 
-	async resetPassword({
-		userId,
-		token,
-		password
-	}: {
-		userId: string
-		token: string
-		password: string
-	}) {
-		return this.post('/api/auth/reset-password', {
-			userId,
+	static async resetPassword({ userId, token, password }: { userId: string; token: string; password: string }) {
+		return ApiService.post<User>('/auth/customer/email/reset-password', {
 			token,
 			password
-		}) as Promise<User>
+		})
 	}
 
-	async getOtp({ phone }: { phone: string }) {
-		return this.post('/api/auth/get-otp', { phone }) as Promise<User>
+	static async getOtp({ phone }: { phone: string }) {
+		// Note: Standard Medusa doesn't have OTP functionality
+		// This would be a custom implementation
+		return ApiService.post<User>('/auth/customer/phone/otp', { phone })
 	}
 
-	async verifyOtp({ phone, otp }: { phone: string; otp: string }) {
-		return this.post('/api/auth/verify-otp', { phone, otp }) as Promise<User>
+	static async verifyOtp({ phone, otp }: { phone: string; otp: string }) {
+		// Note: Standard Medusa doesn't have OTP functionality
+		// This would be a custom implementation
+		return ApiService.post<User>('/auth/customer/phone/verify', { phone, otp })
 	}
 
-	async logout() {
-		return this.delete('/api/auth/logout')
+	static async logout() {
+		return ApiService.delete('/auth/session')
 	}
 
-	async updateProfile({
+	static async updateProfile({
 		id,
 		firstName,
 		lastName,
@@ -181,15 +176,12 @@ export class AuthService extends BaseService {
 		phone: string
 		avatar?: string
 	}) {
-		return this.put('/api/users/' + id, {
-			firstName,
-			lastName,
+		return ApiService.post('/auth/customer/email/update', {
+			first_name: firstName,
+			last_name: lastName,
 			email,
 			phone,
 			avatar
-		}) as Promise<User>
+		})
 	}
 }
-
-// // Use singleton instance
-export const authService = AuthService.getInstance()

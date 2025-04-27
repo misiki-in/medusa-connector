@@ -1,23 +1,43 @@
-import type { Region } from './../types'
+import type { Region } from '$lib/types'
+import { ApiService } from './api-service'
 
-import { BaseService } from './base.service'
+export class RegionService {
+	/**
+	 * Get region information by region ID
+	 * @param id - Region ID
+	 * @returns Region details
+	 */
+	static async getRegionByRegionId(id: string) {
+		try {
+			const response = await ApiService.get<Region>(`/store/regions/${id}`)
 
-export class RegionService extends BaseService {
-  private static instance: RegionService
+			return response?.data
+		} catch (error) {
+			console.error('Error fetching region:', error?.response?.data || error?.message, 'Request Config:', error?.config)
+			// Return default data on error
+			return {
+				id: 'error-placeholder',
+				name: 'Error Region',
+				currency_code: 'USD',
+				countries: []
+			}
+		}
+	}
 
-  /**
-   * Get the singleton instance
-   */
-  static getInstance(): RegionService {
-    if (!RegionService.instance) {
-      RegionService.instance = new RegionService()
-    }
-    return RegionService.instance
-  }
-  async getRegionByRegionId(id: string) {
-    return this.get<Region>('/api/settings')
-  }
+	/**
+	 * List all available regions
+	 * @returns Available regions
+	 */
+	static async listRegions() {
+		try {
+			const response = await ApiService.get(`/store/regions`)
+
+			return response?.data
+		} catch (error) {
+			console.error('Error fetching regions:', error?.response?.data || error?.message, 'Request Config:', error?.config)
+			return {
+				regions: []
+			}
+		}
+	}
 }
-
-// Use singleton instance
-export const regionService = RegionService.getInstance()

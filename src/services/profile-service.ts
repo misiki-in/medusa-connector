@@ -1,27 +1,36 @@
-import type { User } from './../types'
+import type { User } from '$lib/types'
+import { ApiService } from './api-service'
 
-import { BaseService } from './base.service'
+export class ProfileService {
+	static async getOne() {
+		return ApiService.get<User>('/store/customers/me')
+	}
 
-export class ProfileService extends BaseService {
-  private static instance: ProfileService
+	static async save(profile: Omit<User, 'id'>) {
+		return ApiService.post<User>('/store/customers/me', profile)
+	}
 
-  /**
-   * Get the singleton instance
-   */
-  static getInstance(): ProfileService {
-    if (!ProfileService.instance) {
-      ProfileService.instance = new ProfileService()
-    }
-    return ProfileService.instance
-  }
-  async getOne() {
-    return this.get<User>('/api/users/me')
-  }
+	static async getAddresses() {
+		return ApiService.get('/store/customers/me/addresses')
+	}
 
-  async save(blog: Omit<User, 'id'>) {
-    return this.patch<User>('/api/users', blog)
-  }
+	static async addAddress(address: any) {
+		return ApiService.post('/store/customers/me/addresses', address)
+	}
+
+	static async updateAddress(addressId: string, address: any) {
+		return ApiService.post(`/store/customers/me/addresses/${addressId}`, address)
+	}
+
+	static async deleteAddress(addressId: string) {
+		return ApiService.delete(`/store/customers/me/addresses/${addressId}`)
+	}
+
+	static async register(customerData: any) {
+		return ApiService.post('/store/customers', customerData)
+	}
+
+	static async getAddress(addressId: string) {
+		return ApiService.get(`/store/customers/me/addresses/${addressId}`)
+	}
 }
-
-// Use singleton instance
-export const profileService = ProfileService.getInstance()

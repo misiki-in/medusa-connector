@@ -1,23 +1,17 @@
-import type { Currency, PaginatedResponse } from './../types'
+import type { Currency, PaginatedResponse } from '$lib/types'
+import { ApiService } from './api-service'
 
-import { BaseService } from './base.service'
+export class CurrencyService {
+	static async listCurrencies() {
+		const response = await ApiService.get<{ currencies: Currency[] }>('/store/currencies')
+		return {
+			data: response.data.currencies || [],
+			count: response.data.currencies?.length || 0
+		}
+	}
 
-export class CurrencyService extends BaseService {
-  private static instance: CurrencyService
-
-  /**
-   * Get the singleton instance
-   */
-  static getInstance(): CurrencyService {
-    if (!CurrencyService.instance) {
-      CurrencyService.instance = new CurrencyService()
-    }
-    return CurrencyService.instance
-  }
-  async listCurrencies() {
-    return this.get<PaginatedResponse<Currency>>('/api/currencies')
-  }
+	static async getCurrency(code: string) {
+		const response = await ApiService.get<{ currency: Currency }>(`/store/currencies/${code}`)
+		return response.data.currency
+	}
 }
-
-// // Use singleton instance
-export const currencyService = CurrencyService.getInstance()

@@ -1,33 +1,17 @@
-import type { Collection, PaginatedResponse } from './../types'
+import type { Collection, PaginatedResponse } from '$lib/types'
+import { ApiService } from './api-service'
 
-import { BaseService } from './base.service'
+export class CollectionService {
+	static async list({ page = 1, limit = 10, q = '', sort = '-created_at' }) {
+		return ApiService.get<PaginatedResponse<Collection>>(`/store/collections?&limit=${limit}&q=${q}`)
+	}
 
-export class CollectionService extends BaseService {
-  private static instance: CollectionService
+	static async getOne(id: string) {
+		return ApiService.get<Collection>(`/store/collections/${id}`)
+	}
 
-  /**
-   * Get the singleton instance
-   */
-  static getInstance(): CollectionService {
-    if (!CollectionService.instance) {
-      CollectionService.instance = new CollectionService()
-    }
-    return CollectionService.instance
-  }
-  async list({ page = 1, q = '', sort = '-createdAt' }) {
-    return this.get(
-      `/api/collections?page=${page}&q=${q}&sort=${sort}`
-    ) as Promise<PaginatedResponse<Collection>>
-  }
-
-  async getOne(id: string) {
-    return this.get(`/api/collections/${id}`) as Promise<Collection>
-  }
-
-  async getAllRatings() {
-    return this.get('/api/collections/all-ratings') as Promise<Collection>
-  }
+	static async getProducts(collectionId: string, { page = 1, limit = 10 } = {}) {
+		return ApiService.get(`/store/collections/${collectionId}/products?page=${page}&limit=${limit}`)
+	}
 }
 
-// // Use singleton instance
-export const collectionService = CollectionService.getInstance()

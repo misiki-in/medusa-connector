@@ -1,285 +1,306 @@
-import type { Address, Cart } from './../types'
+import type { Address, Cart } from '$lib/types'
+import { ApiService } from './api-service'
 const REGION_ID = ''
 
-import { BaseService } from './base.service'
+export class CartService {
+	static async fetchCartData() {
+		const cartId = localStorage.getItem('cart_id') || null
+		if (!cartId) return null
+		
+		const res = await ApiService.get<Cart>(`/store/carts/${cartId}`)
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 
-export class CartService extends BaseService {
-  private static instance: CartService
+	static async refereshCart() {
+		const cartId = localStorage.getItem('cart_id') || null
+		if (!cartId) return null
+		const res =  await ApiService.get<Cart>(`/store/carts/${cartId}`)
 
-  /**
-   * Get the singleton instance
-   */
-  static getInstance(): CartService {
-    if (!CartService.instance) {
-      CartService.instance = new CartService()
-    }
-    return CartService.instance
-  }
-  async fetchCartData() {
-    return this.get('/api/cart') as Promise<Cart>
-  }
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 
-  async refereshCart() {
-    const cartId = localStorage.getItem('cart_id') || null
-    return this.get(`/api/carts/refresh/${cartId}`) as Promise<Cart>
-  }
+	static async getCartByCartId(cartId: string) {
+		const res = await ApiService.get<Cart>(`/store/carts/${cartId}`)
 
-  //  async fetchRefreshCart(cartId: string) {
-  // 	return this.get<Cart>(`/api/carts/${cartId}`)
-  // }
+		console.log('cart', res)
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 
-  async getCartByCartId(cartId: string) {
-    return this.get(`/api/carts/${cartId}`) as Promise<Cart>
-  }
+	static async addToCart({
+		productId,
+		variantId,
+		qty,
+		cartId,
+		lineId
+	}: {
+		productId: string
+		variantId: string
+		qty: number
+		cartId?: string | null
+		lineId: string | null
+	}) {
+		if (cartId === undefined || cartId === 'undefined') {
+			cartId = localStorage.getItem('cart_id') || null
+		}
 
-  async addToCart({
-    productId,
-    variantId,
-    qty,
-    cartId,
-    lineId
-  }: {
-    productId: string
-    variantId: string
-    qty: number
-    cartId?: string | null
-    lineId: string | null
-  }) {
-    if (cartId === undefined || cartId === 'undefined') {
-      cartId = localStorage.getItem('cart_id') || null
-    }
-    const body = { productId, variantId, qty }
+		const body = { variant_id: variantId, quantity: qty }
 
-    if (!cartId) {
-      const cartRes = (await this.post('/api/carts', {
-        cartId,
-        productId,
-        variantId,
-        qty
-      })) as Cart
+		if (!cartId) {
+			const cartRes = await ApiService.post('/store/carts', {})
 
-      // console.log(cartRes)
-      cartId = cartRes?.id
-    }
-    localStorage.setItem('cart_id', cartId)
-    let res: any = {}
-    if (body.qty === -9999999) {
-      res = await this.delete(`/api/carts/${cartId}/line-items/${lineId}`)
-    } else {
-      if (lineId) {
-        res = (await this.post(
-          `/api/carts/${cartId}/line-items/${lineId}`,
-          body
-        )) as Cart
-      } else {
-        res = (await this.post(`/api/carts/${cartId}/line-items`, body)) as Cart
-      }
-      cartId = res?.cartId || res?.id
-    }
-    if (cartId) {
-      res = (await this.get(`/api/carts/${cartId}`)) as Cart
-      // await postKitcommerceApi(`carts/${cartId}`, { customer_id: res?.id })
+			cartId = cartRes?.cart?.id || cartRes?.id
+		}
+		localStorage.setItem('cart_id', cartId)
 
-      localStorage.setItem('cart_id', cartId)
-    }
-    return res
-    // return this.post<Cart>(`/api/carts`, { cartId, productId, variantId, qty })
-  }
+		let res
+		if (body.quantity === -9999999) {
+			res = await ApiService.delete(`/store/carts/${cartId}/line-items/${lineId}`)
+		} else {
+			if (lineId) {
+				res = await ApiService.post(`/store/carts/${cartId}/line-items/${lineId}`, body)
+			} else {
+				res = await ApiService.post(`/store/carts/${cartId}/line-items`, body)
+			}
+			cartId = res?.cart?.id || res?.id
+		}
+		if (cartId) {
+			res = await ApiService.get(`/store/carts/${cartId}`)
+			localStorage.setItem('cart_id', cartId)
+		}
+		return {
+			...res.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 
-  async removeCart({
-    cartId,
-    lineId = null
-  }: {
-    cartId: string
-    lineId: string | null
-  }) {
-    // console.log('🚀 ~ addToCartService= ~ productId variantId qty lineId:', lineId)
-    if (cartId === undefined || cartId === 'undefined') {
-      cartId = localStorage.getItem('cart_id') || null
-    }
+	static async removeCart({ cartId, lineId = null }: { cartId: string; lineId: string | null }) {
+		if (cartId === undefined || cartId === 'undefined') {
+			cartId = localStorage.getItem('cart_id') || null
+		}
 
-    let res: any = {}
-    if (!cartId) {
-      const cartRes = (await this.post('/api/carts', {
-        region_id: REGION_ID
-      })) as Cart
-      cartId = cartRes?.id
-    }
-    localStorage.setItem('cart_id', cartId)
+		let res: any = {}
+		if (!cartId) {
+			const cartRes = await ApiService.post('/store/carts', {
+				region_id: REGION_ID
+			})
+			cartId = cartRes?.cart?.id || cartRes?.id
+		}
+		localStorage.setItem('cart_id', cartId)
 
-    if (lineId) {
-      res = await this.delete(`/api/carts/${cartId}/line-items/${lineId}`)
-    }
-    if (cartId) {
-      res = (await this.post(`/api/carts/${cartId}`, {
-        customer_id: res?.id
-      })) as Cart
-    }
+		if (lineId) {
+			res = await ApiService.delete(`/store/carts/${cartId}/line-items/${lineId}`)
+		}
+		if (cartId) {
+			res = await ApiService.post(`/store/carts/${cartId}`, {
+				customer_id: res?.id
+			})
+		}
 
-    return res || {}
-  }
+		if (!res) return {}
 
-  async applyCoupon({
-    cartId,
-    couponCode
-  }: {
-    cartId: string
-    couponCode: string
-  }) {
-    return this.post(`/api/cart/apply-coupon/${cartId}`, {
-      couponCode
-    }) as Promise<Cart>
-  }
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 
-  async removeCoupon() {
-    const cartId = localStorage.getItem('cart_id') || null
-    return this.post(`/api/cart/remove-coupon/${cartId}`, {}) as Promise<Cart>
-  }
+	static async applyCoupon({ cartId, couponCode }: { cartId: string; couponCode: string }) {
+		const res = await ApiService.post<Cart>(`/store/carts/${cartId}/promotions`, {
+			code: couponCode
+		})
 
-  async updateCart2({
-    storeId,
-    cartId,
-    email,
-    billingAddress,
-    customer_id,
-    shippingAddress,
-    phone,
-    isBillingAddressSameAsShipping
-  }: any) {
-    if (!cartId || cartId === undefined || cartId === 'undefined') {
-      cartId = localStorage.getItem('cart_id') || null
-    }
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 
-    const body: any = {
-      customer_id
-    }
-    if (email) {
-      body.email = email
-    }
-    if (phone) {
-      body.phone = phone
-    }
-    let address_data
-    if (shippingAddress) {
-      body.shipping_address = {
-        id: shippingAddress?.id,
-        firstName: shippingAddress?.firstName,
-        lastName: shippingAddress?.lastName,
-        address_1: shippingAddress?.address_1,
-        address_2: shippingAddress?.address_2,
-        city: shippingAddress?.city,
-        landmark: shippingAddress?.landmark,
-        zip: shippingAddress?.zip,
-        state: shippingAddress?.state,
-        countryCode: shippingAddress?.countryCode || 'IN',
-        phone: shippingAddress?.phone,
-        email: shippingAddress?.email
-      }
-      address_data = (await this.post(
-        '/api/address',
-        body.shipping_address
-      )) as Address
-      delete body.shipping_address
-      body.shippingAddressId = address_data?.id
-    }
-    if (billingAddress && !isBillingAddressSameAsShipping) {
-      body.billing_address = {
-        id:
-          shippingAddress?.id === billingAddress?.id
-            ? 'new'
-            : shippingAddress
-            ? billingAddress?.id
-            : 'new',
-        firstName: billingAddress?.firstName,
-        lastName: billingAddress?.lastName,
-        address_1: billingAddress?.address_1,
-        address_2: billingAddress?.address_2,
-        city: billingAddress?.city,
-        landmark: billingAddress?.landmark,
-        zip: billingAddress?.zip,
-        state: billingAddress?.state,
-        countryCode: billingAddress?.countryCode || 'IN',
-        phone: billingAddress?.phone,
-        email: billingAddress?.email
-      }
-      address_data = (await this.post(
-        '/api/address',
-        body.billing_address
-      )) as Address
-      delete body.billing_address
-      // console.log('🚀 ~ CartService ~ updateCart2 ~ address_data:', address_data)
-      body.billingAddressId = address_data?.id
-    } else if (shippingAddress && isBillingAddressSameAsShipping) {
-      body.billingAddressId = body.shippingAddressId
-    }
+	static async removeCoupon({ cartId, promotionId }: { cartId: string; promotionId: string }) {
+		const res = await ApiService.delete<Cart>(`/store/carts/${cartId}/promotions/${promotionId}`)
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 
-    if (cartId) {
-      const res = (await this.patch(`/api/carts/${cartId}`, body)) as Cart
+	static async updateCart2({ cartId, email, billingAddress, customer_id, shippingAddress, phone, isBillingAddressSameAsShipping }: any) {
+		if (!cartId || cartId === undefined || cartId === 'undefined') {
+			cartId = localStorage.getItem('cart_id') || null
+		}
 
-      // Use type assertion to avoid TypeScript error
-      ;(res as any).shipping_address = address_data
+		// Update customer information
+		if (email || customer_id) {
+			await ApiService.post(`/store/carts/${cartId}/customer`, {
+				email,
+				customer_id
+			})
+		}
 
-      return res || {}
-    }
-  }
+		// Process shipping address
+		if (shippingAddress) {
+			const shippingAddressData = {
+				first_name: shippingAddress?.firstName,
+				last_name: shippingAddress?.lastName,
+				address_1: shippingAddress?.address_1,
+				address_2: shippingAddress?.address_2,
+				city: shippingAddress?.city,
+				province: shippingAddress?.state,
+				postal_code: shippingAddress?.zip,
+				country_code: shippingAddress?.countryCode || 'IN',
+				phone: shippingAddress?.phone
+			}
+			await ApiService.post(`/store/carts/${cartId}`, {
+				shipping_address: shippingAddressData
+			})
+		}
 
-  async completeCart(cart_id: string) {
-    return this.post(`/api/carts/${cart_id}/complete`, {
-      id: cart_id
-    }) as Promise<Cart>
-  }
+		// Process billing address
+		if (billingAddress && !isBillingAddressSameAsShipping) {
+			const billingAddressData = {
+				first_name: billingAddress?.firstName,
+				last_name: billingAddress?.lastName,
+				address_1: billingAddress?.address_1,
+				address_2: billingAddress?.address_2,
+				city: billingAddress?.city,
+				province: billingAddress?.state,
+				postal_code: billingAddress?.zip,
+				country_code: billingAddress?.countryCode || 'IN',
+				phone: billingAddress?.phone
+			}
+			await ApiService.post(`/store/carts/${cartId}`, {
+				billing_address: billingAddressData
+			})
+		} else if (shippingAddress && isBillingAddressSameAsShipping) {
+			// Use shipping address as billing address
+			const shippingAddressData = {
+				first_name: shippingAddress?.firstName,
+				last_name: shippingAddress?.lastName,
+				address_1: shippingAddress?.address_1,
+				address_2: shippingAddress?.address_2,
+				city: shippingAddress?.city,
+				province: shippingAddress?.state,
+				postal_code: shippingAddress?.zip,
+				country_code: shippingAddress?.countryCode || 'IN',
+				phone: shippingAddress?.phone
+			}
+			await ApiService.post(`/store/carts/${cartId}`, {
+				billing_address: shippingAddressData
+			})
+		}
 
-  async updateCart({
-    qty,
-    cartId,
-    lineId = null,
-    productId,
-    variantId,
-    isSelectedForCheckout
-  }: any) {
-    // console.log('🚀 ~ addToCartService= ~ productId variantId qty lineId:', qty, lineId, productId, variantId)
-    if (!cartId || cartId === undefined || cartId === 'undefined') {
-      cartId = localStorage.getItem('cart_id') || null
-    }
+		// Get updated cart
+		const res = await ApiService.get(`/store/carts/${cartId}`)
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 
-    let res: any = {}
-    if (!cartId) {
-      const cartRes = (await this.post('/api/carts', {
-        region_id: REGION_ID
-      })) as Cart
-      cartId = cartRes?.id
-    }
-    localStorage.setItem('cart_id', cartId)
+	static async completeCart(cart_id: string) {
+		return ApiService.post<Cart>(`/store/carts/${cart_id}/complete`, {})
+	}
 
-    if (lineId) {
-      res = (await this.post(`/api/carts/${cartId}/line-items`, {
-        qty: qty,
-        id: lineId,
-        productId,
-        variantId,
-        isSelectedForCheckout
-      })) as Cart
-    }
-    // console.log(res)
-    // if (cartId) {
-    // 	await postKitcommerceApi(`carts/${cartId}`, { customer_id: res?.id })
-    // }
+	static async updateCart({ qty, cartId, lineId = null, productId, variantId, isSelectedForCheckout }: any) {
+		if (!cartId || cartId === undefined || cartId === 'undefined') {
+			cartId = localStorage.getItem('cart_id') || null
+		}
 
-    return res || {}
-    // return this.post<Cart>(`/api/carts/${cartId}/line-items`, { qty: qty, id: lineId, productId, variantId })
-  }
+		let res: any = {}
+		if (!cartId) {
+			const cartRes = await ApiService.post('/store/carts', {
+				region_id: REGION_ID
+			})
+			cartId = cartRes?.cart?.id || cartRes?.id
+		}
+		localStorage.setItem('cart_id', cartId)
 
-  async updateShippingRate({
-    cartId,
-    shippingRateId
-  }: {
-    cartId: string
-    shippingRateId: string
-  }) {
-    const updates = { shippingRateId }
-    return this.patch(`/api/carts/${cartId}`, updates) as Promise<Cart>
-  }
+		const body = {
+			variant_id: variantId,
+			quantity: qty
+		}
+
+		if (lineId) {
+			res = await ApiService.post(`/store/carts/${cartId}/line-items/${lineId}`, body)
+		} else {
+			res = await ApiService.post(`/store/carts/${cartId}/line-items`, body)
+		}
+
+		if (!res) return {}
+
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
+
+	static async updateShippingRate({ cartId, shippingRateId }: { cartId: string; shippingRateId: string }) {
+		const res = await ApiService.post(`/store/carts/${cartId}/shipping-methods`, {
+			option_id: shippingRateId
+		})
+
+		return {
+			...res?.cart,
+			lineItems: res?.cart?.items?.map((item) => {
+				return {
+					...item,
+					title: item.product_title
+				}
+			})
+		}
+	}
 }
 
-// // Use singleton instance
-export const cartService = CartService.getInstance()
