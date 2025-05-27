@@ -1,5 +1,4 @@
-import { env } from '$env/dynamic/public'
-const token = env.PUBLIC_MEDUSA_PUBLISHABLE_API_KEY
+const token = process.env.PUBLIC_MEDUSA_PUBLISHABLE_API_KEY;
 
 export class StoreService {
 	static async getStore(id: string) {
