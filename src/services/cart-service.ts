@@ -1,19 +1,24 @@
-import type { Address, Cart } from '$lib/types'
+import type { Address, Cart } from '../types'
+import { PaginatedMedusaResponse } from '../types/api-response';
 import { ApiService } from './api-service'
 const REGION_ID = ''
+
+type CartResponse = PaginatedMedusaResponse<{
+  cart: Cart;
+}>;
 
 export class CartService {
 	static async fetchCartData() {
 		const cartId = localStorage.getItem('cart_id') || null
 		if (!cartId) return null
 		
-		const res = await ApiService.get<Cart>(`/store/carts/${cartId}`)
+		const res = await ApiService.get<CartResponse>(`/store/carts/${cartId}`);
 		return {
 			...res?.cart,
 			lineItems: res?.cart?.items?.map((item) => {
 				return {
 					...item,
-					title: item.product_title
+					title: item.product.title
 				}
 			})
 		}
@@ -22,21 +27,21 @@ export class CartService {
 	static async refereshCart() {
 		const cartId = localStorage.getItem('cart_id') || null
 		if (!cartId) return null
-		const res =  await ApiService.get<Cart>(`/store/carts/${cartId}`)
+		const res =  await ApiService.get<CartResponse>(`/store/carts/${cartId}`)
 
 		return {
 			...res?.cart,
 			lineItems: res?.cart?.items?.map((item) => {
 				return {
 					...item,
-					title: item.product_title
+					title: item.product.title
 				}
 			})
 		}
 	}
 
 	static async getCartByCartId(cartId: string) {
-		const res = await ApiService.get<Cart>(`/store/carts/${cartId}`)
+		const res = await ApiService.get<CartResponse>(`/store/carts/${cartId}`);
 
 		console.log('cart', res)
 		return {
@@ -44,7 +49,7 @@ export class CartService {
 			lineItems: res?.cart?.items?.map((item) => {
 				return {
 					...item,
-					title: item.product_title
+					title: item.product.title
 				}
 			})
 		}
@@ -70,66 +75,72 @@ export class CartService {
 		const body = { variant_id: variantId, quantity: qty }
 
 		if (!cartId) {
-			const cartRes = await ApiService.post('/store/carts', {})
+			const cartRes = await ApiService.post<CartResponse>("/store/carts", {});
 
-			cartId = cartRes?.cart?.id || cartRes?.id
+			cartId = cartRes?.cart?.id || (cartRes as any)?.id
 		}
-		localStorage.setItem('cart_id', cartId)
+		localStorage.setItem('cart_id', cartId || '')
 
 		let res
 		if (body.quantity === -9999999) {
-			res = await ApiService.delete(`/store/carts/${cartId}/line-items/${lineId}`)
+			res = await ApiService.delete<{ deleted: boolean }>(`/store/carts/${cartId}/line-items/${lineId}`)
 		} else {
 			if (lineId) {
-				res = await ApiService.post(`/store/carts/${cartId}/line-items/${lineId}`, body)
+				res = await ApiService.post<CartResponse>(
+          `/store/carts/${cartId}/line-items/${lineId}`,
+          body
+        );
 			} else {
-				res = await ApiService.post(`/store/carts/${cartId}/line-items`, body)
+				res = await ApiService.post<CartResponse>(
+          `/store/carts/${cartId}/line-items`,
+          body
+        );
 			}
-			cartId = res?.cart?.id || res?.id
+			cartId = res?.cart?.id || (res as any)?.id
 		}
 		if (cartId) {
-			res = await ApiService.get(`/store/carts/${cartId}`)
+			res = await ApiService.get<CartResponse>(`/store/carts/${cartId}`);
 			localStorage.setItem('cart_id', cartId)
 		}
 		return {
-			...res.cart,
-			lineItems: res?.cart?.items?.map((item) => {
-				return {
-					...item,
-					title: item.product_title
-				}
-			})
-		}
+      ...('cart' in res ? res.cart : res),
+      lineItems: ('cart' in res) ? res?.cart?.items?.map((item) => {
+        return {
+          ...item,
+          title: item.product.title,
+        };
+      }) : [],
+    };
 	}
 
 	static async removeCart({ cartId, lineId = null }: { cartId: string; lineId: string | null }) {
 		if (cartId === undefined || cartId === 'undefined') {
-			cartId = localStorage.getItem('cart_id') || null
+			cartId = localStorage.getItem('cart_id') || ''
 		}
 
 		let res: any = {}
 		if (!cartId) {
-			const cartRes = await ApiService.post('/store/carts', {
+			const cartRes = await ApiService.post<CartResponse>('/store/carts', {
 				region_id: REGION_ID
 			})
-			cartId = cartRes?.cart?.id || cartRes?.id
+			cartId = cartRes?.cart?.id || (cartRes as any)?.id
 		}
 		localStorage.setItem('cart_id', cartId)
 
 		if (lineId) {
-			res = await ApiService.delete(`/store/carts/${cartId}/line-items/${lineId}`)
+			res = await ApiService.delete<{ deleted: boolean }>(`/store/carts/${cartId}/line-items/${lineId}`)
 		}
 		if (cartId) {
-			res = await ApiService.post(`/store/carts/${cartId}`, {
-				customer_id: res?.id
-			})
+			res = await ApiService.post<CartResponse>(`/store/carts/${cartId}`, {
+        customer_id: res?.id,
+      });
 		}
 
 		if (!res) return {}
 
 		return {
 			...res?.cart,
-			lineItems: res?.cart?.items?.map((item) => {
+			lineItems: res?.cart?.items?.map((item: any) => {
 				return {
 					...item,
 					title: item.product_title
@@ -139,32 +150,27 @@ export class CartService {
 	}
 
 	static async applyCoupon({ cartId, couponCode }: { cartId: string; couponCode: string }) {
-		const res = await ApiService.post<Cart>(`/store/carts/${cartId}/promotions`, {
-			code: couponCode
-		})
+		const res = await ApiService.post<CartResponse>(
+      `/store/carts/${cartId}/promotions`,
+      {
+        code: couponCode,
+      }
+    );
 
 		return {
 			...res?.cart,
 			lineItems: res?.cart?.items?.map((item) => {
 				return {
 					...item,
-					title: item.product_title
+					title: item.product.title
 				}
 			})
 		}
 	}
 
 	static async removeCoupon({ cartId, promotionId }: { cartId: string; promotionId: string }) {
-		const res = await ApiService.delete<Cart>(`/store/carts/${cartId}/promotions/${promotionId}`)
-		return {
-			...res?.cart,
-			lineItems: res?.cart?.items?.map((item) => {
-				return {
-					...item,
-					title: item.product_title
-				}
-			})
-		}
+		const res = await ApiService.delete<{ deleted: boolean }>(`/store/carts/${cartId}/promotions/${promotionId}`)
+		return res
 	}
 
 	static async updateCart2({ cartId, email, billingAddress, customer_id, shippingAddress, phone, isBillingAddressSameAsShipping }: any) {
@@ -233,13 +239,13 @@ export class CartService {
 		}
 
 		// Get updated cart
-		const res = await ApiService.get(`/store/carts/${cartId}`)
+		const res = await ApiService.get<CartResponse>(`/store/carts/${cartId}`);
 		return {
 			...res?.cart,
 			lineItems: res?.cart?.items?.map((item) => {
 				return {
 					...item,
-					title: item.product_title
+					title: item.product.title
 				}
 			})
 		}
@@ -256,10 +262,10 @@ export class CartService {
 
 		let res: any = {}
 		if (!cartId) {
-			const cartRes = await ApiService.post('/store/carts', {
-				region_id: REGION_ID
-			})
-			cartId = cartRes?.cart?.id || cartRes?.id
+			const cartRes = await ApiService.post<CartResponse>("/store/carts", {
+        region_id: REGION_ID,
+      });
+			cartId = cartRes?.cart?.id || (cartRes as any)?.id
 		}
 		localStorage.setItem('cart_id', cartId)
 
@@ -269,16 +275,22 @@ export class CartService {
 		}
 
 		if (lineId) {
-			res = await ApiService.post(`/store/carts/${cartId}/line-items/${lineId}`, body)
+			res = await ApiService.post<CartResponse>(
+        `/store/carts/${cartId}/line-items/${lineId}`,
+        body
+      );
 		} else {
-			res = await ApiService.post(`/store/carts/${cartId}/line-items`, body)
+			res = await ApiService.post<CartResponse>(
+        `/store/carts/${cartId}/line-items`,
+        body
+      );
 		}
 
 		if (!res) return {}
 
 		return {
 			...res?.cart,
-			lineItems: res?.cart?.items?.map((item) => {
+			lineItems: res?.cart?.items?.map((item: any) => {
 				return {
 					...item,
 					title: item.product_title
@@ -288,16 +300,19 @@ export class CartService {
 	}
 
 	static async updateShippingRate({ cartId, shippingRateId }: { cartId: string; shippingRateId: string }) {
-		const res = await ApiService.post(`/store/carts/${cartId}/shipping-methods`, {
-			option_id: shippingRateId
-		})
+		const res = await ApiService.post<CartResponse>(
+      `/store/carts/${cartId}/shipping-methods`,
+      {
+        option_id: shippingRateId,
+      }
+    );
 
 		return {
 			...res?.cart,
 			lineItems: res?.cart?.items?.map((item) => {
 				return {
 					...item,
-					title: item.product_title
+					title: item.product.title
 				}
 			})
 		}

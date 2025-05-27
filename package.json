@@ -26,7 +26,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup src/index.ts",
+    "build": "tsup",
     "prepublishOnly": "npm run build",
     "p": "tsup && npm publish --access public",
     "dev": "tsup --watch",

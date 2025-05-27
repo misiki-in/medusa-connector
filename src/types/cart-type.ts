@@ -38,6 +38,8 @@ export type Cart = {
 	tax: number
 	total: number
 	savingAmount: number
+
+  items: CartProduct[]
 }
 
 export type CartLineItem = {

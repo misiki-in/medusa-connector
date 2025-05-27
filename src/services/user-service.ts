@@ -1,4 +1,5 @@
-import type { User } from '$lib/types'
+import { AxiosError } from 'axios'
+import type { User } from '../types'
 import { ApiService } from './api-service'
 
 export class UserService {
@@ -133,7 +134,8 @@ export class UserService {
 		try {
 			return ApiService.post<{ exists: boolean }>('/auth/customer/emailpass/exists', { email })
 		} catch (e) {
-			throw new Error(e?.message || 'Failed to check email')
+      const axiosError = e as AxiosError
+			throw new Error(axiosError?.message || "Failed to check email");
 		}
 	}
 

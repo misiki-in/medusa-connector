@@ -1,4 +1,4 @@
-import type { Collection, PaginatedResponse } from '$lib/types'
+import type { Collection, PaginatedResponse } from '../types'
 import { ApiService } from './api-service'
 
 export class CollectionService {

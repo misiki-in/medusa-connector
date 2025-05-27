@@ -1,5 +1,15 @@
-import type { PaginatedResponse, Product } from '$lib/types'
+import { AxiosError } from 'axios'
+import type { PaginatedResponse, Product } from '../types'
+import { PaginatedMedusaResponse } from '../types/api-response'
 import { ApiService } from './api-service'
+
+type ProductResponse = PaginatedMedusaResponse<{
+  product: Product
+}>
+
+type ProductListResponse = PaginatedMedusaResponse<{
+  products: Product[];
+}>;
 
 export class ProductService {
 	/**
@@ -49,7 +59,10 @@ export class ProductService {
 		}
 
 		try {
-			const resData = await ApiService.get(`/store/products`, { params })
+			const resData = await ApiService.get<ProductListResponse>(
+        `/store/products`,
+        { params }
+      );
 
 			console.log('Raw API Response for list:', resData, 'Params:', params)
 
@@ -112,7 +125,14 @@ export class ProductService {
 					options: []
 				}
 			]
-			console.error('Error fetching products:', error?.response?.data || error?.message, 'Request Config:', error?.config)
+
+      const axiosError = error as AxiosError
+			console.error(
+        "Error fetching products:",
+        axiosError?.response?.data || axiosError?.message,
+        "Request Config:",
+        axiosError?.config
+      );
 			// Return default data with placeholder URLs on error
 			return {
 				products: [],
@@ -131,13 +151,11 @@ export class ProductService {
 	 */
 	static async getOne(handle: string) {
 		try {
-			const resData = await ApiService.get<PaginatedResponse<Product[]>>(`/store/products`, {
-				params: { q: handle, limit: '1' }
-			})
+			const resData = await ApiService.get<ProductResponse>(`/store/products/${handle}`)
 
 			console.log('Raw API Response for getOne:', resData, 'Handle:', handle)
 
-			const product = resData.products[0]
+			const product = resData.product
 			if (!product) throw new Error('Product not found with handle: ' + handle)
 
 			// Log and validate raw image URLs
@@ -146,20 +164,30 @@ export class ProductService {
 			console.log('Validated Raw Thumbnail:', rawThumbnail, 'Raw Images:', rawImages)
 
 			return {
-				id: product.id,
-				title: product.title,
-				thumbnail: rawThumbnail,
-				rawThumbnail, // Exact raw URL for fallback
-				images: rawImages?.join(',') ||"" ,
-				rawImages, // Exact raw URLs for fallback
-				price: (product.variants && product.variants[0]?.prices && product.variants[0].prices[0]?.amount / 100) || 0,
-				handle: product.handle,
-				description: product.description,
-				variants: product.variants || [],
-				options: product.options || []
-			}
+        id: product.id,
+        title: product.title,
+        thumbnail: rawThumbnail,
+        rawThumbnail, // Exact raw URL for fallback
+        images: rawImages?.join(",") || "",
+        rawImages, // Exact raw URLs for fallback
+        price:
+          (product.variants &&
+            product.variants[0]?.calculated_price?.original_price &&
+            product.variants[0].calculated_price?.calculated_amount / 100) ||
+          0,
+        handle: product.handle,
+        description: product.description,
+        variants: product.variants || [],
+        options: product.options || [],
+      };
 		} catch (error) {
-			console.error('Error fetching product:', error?.response?.data || error?.message, 'Request Config:', error?.config)
+      const axiosError = error as AxiosError
+			console.error(
+        "Error fetching product:",
+        axiosError?.response?.data || axiosError?.message,
+        "Request Config:",
+        axiosError?.config
+      );
 			// Return default data with placeholder URL on error
 			return {
 				id: 'error-placeholder',
@@ -185,6 +213,7 @@ export class ProductService {
 	 * @param rating - Rating value
 	 * @param uploadedImages - Array of image URLs
 	 * @returns Response from the API
+   * @todo: Verify with medusa docs
 	 */
 	static async addReview({
 		productId,
@@ -200,7 +229,8 @@ export class ProductService {
 		uploadedImages: string[]
 	}) {
 		try {
-			const response = await ApiService.post(`/store/products/${productId}/ratings-and-reviews`, {
+      //@todo: after verifying with medusa docs, implement proper types for the response
+			const response: any = await ApiService.post(`/store/products/${productId}/ratings-and-reviews`, {
 				variant_id: variantId,
 				review,
 				rating,
@@ -209,7 +239,13 @@ export class ProductService {
 			console.log('addReview response:', response?.data, 'Request URL:', response?.config?.url)
 			return response?.data
 		} catch (error) {
-			console.error('Error adding review:', error?.response?.data || error?.message, 'Request Config:', error?.config)
+      const axiosError = error as AxiosError
+			console.error(
+        "Error adding review:",
+        axiosError?.response?.data || axiosError?.message,
+        "Request Config:",
+        axiosError?.config
+      );
 			throw error
 		}
 	}
@@ -224,7 +260,13 @@ export class ProductService {
 			console.log('fetchReels response:', resData)
 			return resData
 		} catch (error) {
-			console.error('Error fetching reels:', error?.response?.data || error?.message, 'Request Config:', error?.config)
+      const axiosError = error as AxiosError
+			console.error(
+        "Error fetching reels:",
+        axiosError?.response?.data || axiosError?.message,
+        "Request Config:",
+        axiosError?.config
+      );
 			throw new Error('Failed to fetch reels')
 		}
 	}

@@ -1,4 +1,4 @@
-import type { User } from '$lib/types'
+import type { User } from '../types'
 import { ApiService } from './api-service'
 
 export class ProfileService {

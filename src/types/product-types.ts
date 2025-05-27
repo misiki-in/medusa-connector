@@ -1,5 +1,6 @@
 export type Product = {
 	id: string
+  handle: string
 	active: boolean
 	status: ProductStatus
 	type: string
@@ -9,7 +10,15 @@ export type Product = {
 	instructions: string | null
 	description: string | null
 	hsnCode: string | null
-	images: string | null
+	images: {
+    "id": string,
+    "url": string,
+    "created_at": string,
+    "updated_at": string,
+    "deleted_at": string,
+    "metadata": Record<string, unknown> | null,
+    "rank": number
+  }[]
 	featuredImage: string | null
 	thumbnail: string | null
 	keywords: string | null
@@ -74,44 +83,60 @@ export enum ProductStatus {
 }
 
 export type Variant = {
-	id: string
-	title: string
-	productId: string
-	sku: string | null
-	barcode: string | null
-	batchNo: string | null
-	stock: number
-	allowBackorder: boolean
-	manageInventory: boolean
-	hsCode: string | null
-	originCountry: string | null
-	midCode: string | null
-	material: string | null
-	weight: number | null
-	length: number | null
-	height: number | null
-	width: number | null
-	price: number
-	costPerItem: number
-	mfgDate: string | null
-	expiryDate: string | null
-	returnAllowed: boolean
-	replaceAllowed: boolean
-	mrp: number
-	img: string | null
-	description: string | null
-	storeId: string | null
-	len: number | null
-	rank: number
-	shippingWeight: number | null
-	shippingHeight: number | null
-	shippingLen: number | null
-	shippingWidth: number | null
-	shippingCost: number | null
-	metadata: Record<string, unknown> | null
-	variantRank: number
-	options: { id: string; optionId: string; value: string; variantId: string }[]
-}
+  id: string;
+  title: string;
+  productId: string;
+  sku: string | null;
+  barcode: string | null;
+  batchNo: string | null;
+  stock: number;
+  allowBackorder: boolean;
+  manageInventory: boolean;
+  hsCode: string | null;
+  originCountry: string | null;
+  calculated_price: {
+    id: string;
+    is_calculated_price_price_list: boolean;
+    is_calculated_price_tax_inclusive: boolean;
+    calculated_amount: number;
+    calculated_amount_with_tax: number;
+    calculated_amount_without_tax: number;
+    is_original_price_price_list: boolean;
+    is_original_price_tax_inclusive: boolean;
+    original_amount: number;
+    currency_code: string;
+    calculated_price: Record<string, unknown>;
+    original_price: Record<string, unknown>;
+    original_amount_with_tax: number;
+    original_amount_without_tax: number;
+  };
+  midCode: string | null;
+  material: string | null;
+  weight: number | null;
+  length: number | null;
+  height: number | null;
+  width: number | null;
+  price: number;
+  costPerItem: number;
+  mfgDate: string | null;
+  expiryDate: string | null;
+  returnAllowed: boolean;
+  replaceAllowed: boolean;
+  mrp: number;
+  img: string | null;
+  description: string | null;
+  storeId: string | null;
+  len: number | null;
+  rank: number;
+  shippingWeight: number | null;
+  shippingHeight: number | null;
+  shippingLen: number | null;
+  shippingWidth: number | null;
+  shippingCost: number | null;
+  metadata: Record<string, unknown> | null;
+  variantRank: number;
+  options: { id: string; optionId: string; value: string; variantId: string }[];
+};
 
 export type ProductAttribute = {
 	id: string

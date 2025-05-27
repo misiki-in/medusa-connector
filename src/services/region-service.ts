@@ -1,4 +1,5 @@
-import type { Region } from '$lib/types'
+import { AxiosError } from 'axios';
+import type { Region } from '../types'
 import { ApiService } from './api-service'
 
 export class RegionService {
@@ -9,11 +10,19 @@ export class RegionService {
 	 */
 	static async getRegionByRegionId(id: string) {
 		try {
-			const response = await ApiService.get<Region>(`/store/regions/${id}`)
+			const response = await ApiService.get<{ region: Region }>(
+        `/store/regions/${id}`
+      );
 
-			return response?.data
+			return response
 		} catch (error) {
-			console.error('Error fetching region:', error?.response?.data || error?.message, 'Request Config:', error?.config)
+      const axiosError = error as AxiosError;
+			console.error(
+        "Error fetching region:",
+        axiosError?.response?.data || axiosError?.message,
+        "Request Config:",
+        axiosError?.config
+      );
 			// Return default data on error
 			return {
 				id: 'error-placeholder',
@@ -30,11 +39,17 @@ export class RegionService {
 	 */
 	static async listRegions() {
 		try {
-			const response = await ApiService.get(`/store/regions`)
+			const response = await ApiService.get<{regions: Region[]}>(`/store/regions`)
 
-			return response?.data
+			return response
 		} catch (error) {
-			console.error('Error fetching regions:', error?.response?.data || error?.message, 'Request Config:', error?.config)
+      const axiosError = error as AxiosError;
+			console.error(
+        "Error fetching regions:",
+        axiosError?.response?.data || axiosError?.message,
+        "Request Config:",
+        axiosError?.config
+      );
 			return {
 				regions: []
 			}

@@ -1,4 +1,4 @@
-import type { Category, PaginatedResponse } from '$lib/types'
+import type { Category, PaginatedResponse } from '../types'
 import { ApiService } from './api-service'
 
 export class CategoryService {

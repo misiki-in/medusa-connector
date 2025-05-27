@@ -1,4 +1,4 @@
-import type { Currency, PaginatedResponse } from '$lib/types'
+import type { Currency, PaginatedResponse } from '../types'
 import { ApiService } from './api-service'
 
 export class CurrencyService {
