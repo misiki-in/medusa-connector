@@ -1,5 +1,5 @@
-import { PAGE_SIZE } from '../config'
-import { ProductStatus, type Product } from '../types'
+import { PAGE_SIZE, REGION_ID } from '../config'
+import { ProductStatus, Variant, type Product } from '../types'
 import { PaginatedMedusaResponse } from '../types/api-response'
 import { BaseService } from './base-service'
 
@@ -36,9 +36,15 @@ function transformProduct(product: any): any {
     slug: product.handle,
     handle: product.handle,
     description: product.description,
-    images: rawImages,
+    images: rawImages.join(','),
     //rawImages, // Exact raw URLs for fallback
-    variants: product.variants || [],
+    variants: product.variants?.map((variant: any): Variant => {
+      return {
+        ...variant,
+        price: variant?.calculated_price?.calculated_amount || 0,
+        mrp: variant?.calculated_price?.original_amount || 0,
+      }
+    }) || [],
     options: product.options || []
   }
 }
@@ -96,7 +102,7 @@ export class ProductService extends BaseService {
     searchParams.set('limit', String(PAGE_SIZE))
     searchParams.set('q', search)
     searchParams.set('category_id', categories)
-    searchParams.set('region_id', 'reg_01JWBSQY5SZ8G7DHBG2GPCPEVA')
+    searchParams.set('region_id', REGION_ID)
     searchParams.set('fields', '+variants.calculated_price')
 
     try {
@@ -171,7 +177,7 @@ export class ProductService extends BaseService {
   async getOne(handle: string) {
     try {
       const searchParams = new URLSearchParams()
-      searchParams.set('region_id', 'reg_01JWBSQY5SZ8G7DHBG2GPCPEVA')
+      searchParams.set('region_id', REGION_ID)
       searchParams.set('fields', '+variants.calculated_price')
       searchParams.set('handle', handle)
       const resData = await this.get<ProductListResponse>('/store/products?' + searchParams.toString())
