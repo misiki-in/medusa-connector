@@ -11,7 +11,7 @@ function saveUserAsMeCookie(user: User) {
 }
 
 function customerToUser(customer: Record<string, any>): User {
-  return { ...customer, role: "USER" } as User
+  return { ...customer, userId: customer.id, role: "USER" } as User
 }
 
 export class UserService extends BaseService {

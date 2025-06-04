@@ -1,15 +1,21 @@
 import { REGION_ID } from "../config";
 import type { Cart, CartLineItem } from "../types";
 import { PaginatedMedusaResponse } from "../types/api-response";
+import { transformFromAddress, transformIntoAddress } from "./address-service";
 import { BaseService } from "./base-service";
 
 type CartResponse = PaginatedMedusaResponse<{
   cart: Cart;
 }>;
 
-function transformCart(cart: Cart): Cart {
+function transformIntoCart(cart: Record<string, any>): Cart {
   return {
     ...cart,
+    phone: cart?.metadata?.phone,
+    shippingAddress: transformIntoAddress(cart?.shipping_address),
+    shippingAddressId: cart?.shipping_address_id,
+    billingAddressId: cart?.billing_address_id,
+    billingAddress: transformIntoAddress(cart?.billing_address),
     qty: cart?.items.reduce((a, b: any) => a + b.quantity, 0),
     lineItems: cart?.items?.map((item: any): CartLineItem => {
       return {
@@ -43,7 +49,7 @@ export class CartService extends BaseService {
     return CartService.instance;
   }
 
-  async ensureCartId(cartId: string | null | undefined): Promise<string>{
+  async ensureCartId(cartId: string | null | undefined): Promise<string> {
     if (cartId === undefined || cartId === "undefined") {
       cartId = localStorage.getItem("cart_id") || null;
     }
@@ -83,14 +89,14 @@ export class CartService extends BaseService {
     const cartId = localStorage.getItem("cart_id") || null;
     if (!cartId) return null;
     const res = await this.get<CartResponse>(`/store/carts/${cartId}`);
-    return transformCart(res.cart)
+    return transformIntoCart(res.cart)
   }
 
   async getCartByCartId(cartId: string) {
     const res = await this.get<CartResponse>(`/store/carts/${cartId}`);
 
     console.log("fetched cart", res);
-    return transformCart(res.cart);
+    return transformIntoCart(res.cart);
   }
 
   async addToCart({
@@ -114,7 +120,7 @@ export class CartService extends BaseService {
       }
     );
 
-    return transformCart(res.cart);
+    return transformIntoCart(res.cart);
 
     /*
     let res;
@@ -157,7 +163,7 @@ export class CartService extends BaseService {
       `/store/carts/${cartId}/line-items/${lineId}`,
     );
 
-    return transformCart(res.cart);
+    return transformIntoCart(res.cart);
 
     /*
     if (cartId === undefined || cartId === "undefined") {
@@ -246,72 +252,56 @@ export class CartService extends BaseService {
     isBillingAddressSameAsShipping,
   }: any) {
     cartId = await this.ensureCartId(cartId);
+    let cartResponse: any = null
 
-    console.log("updateing email")
+    console.log("updating email and phone")
+    console.log(cartId, email, billingAddress, shippingAddress)
     // Update customer information
-    if (email || customer_id) {
-      await this.post(`/store/carts/${cartId}`, {
+    if (email || customer_id || phone) {
+      cartResponse = await this.post(`/store/carts/${cartId}`, {
         email,
         customer_id,
+        metadata: {
+          phone
+        }
       });
     }
 
-    console.log("called linked")
+    console.log("called shipping", shippingAddress)
     // Process shipping address
+    let shippingAddressId = null
     if (shippingAddress) {
-      const shippingAddressData = {
-        first_name: shippingAddress?.firstName,
-        last_name: shippingAddress?.lastName,
-        address_1: shippingAddress?.address_1,
-        address_2: shippingAddress?.address_2,
-        city: shippingAddress?.city,
-        province: shippingAddress?.state,
-        postal_code: shippingAddress?.zip,
-        country_code: shippingAddress?.countryCode || "IN",
-        phone: shippingAddress?.phone,
-      };
-      await this.post(`/store/carts/${cartId}`, {
+      const shippingAddressData = transformFromAddress(shippingAddress)
+      cartResponse = await this.post(`/store/carts/${cartId}`, {
         shipping_address: shippingAddressData,
       });
+      shippingAddressId = cartResponse?.cart?.shipping_address_id || null
     }
 
     // Process billing address
+    console.log("called billinng", billingAddress)
     if (billingAddress && !isBillingAddressSameAsShipping) {
-      const billingAddressData = {
-        first_name: billingAddress?.firstName,
-        last_name: billingAddress?.lastName,
-        address_1: billingAddress?.address_1,
-        address_2: billingAddress?.address_2,
-        city: billingAddress?.city,
-        province: billingAddress?.state,
-        postal_code: billingAddress?.zip,
-        country_code: billingAddress?.countryCode || "IN",
-        phone: billingAddress?.phone,
-      };
-      await this.post(`/store/carts/${cartId}`, {
+      const billingAddressData = transformFromAddress(billingAddress)
+      cartResponse = await this.post(`/store/carts/${cartId}`, {
         billing_address: billingAddressData,
       });
-    } else if (shippingAddress && isBillingAddressSameAsShipping) {
+    } 
+    /*else if (shippingAddressId && isBillingAddressSameAsShipping) {
       // Use shipping address as billing address
-      const shippingAddressData = {
-        first_name: shippingAddress?.firstName,
-        last_name: shippingAddress?.lastName,
-        address_1: shippingAddress?.address_1,
-        address_2: shippingAddress?.address_2,
-        city: shippingAddress?.city,
-        province: shippingAddress?.state,
-        postal_code: shippingAddress?.zip,
-        country_code: shippingAddress?.countryCode || "IN",
-        phone: shippingAddress?.phone,
-      };
-      await this.post(`/store/carts/${cartId}`, {
+      cartResponse = await this.post(`/store/carts/${cartId}`, {
+        billing_address: {
+          id: shippingAddressId
+        },
+      });
+    } */
+    else if (shippingAddress && isBillingAddressSameAsShipping) {
+      const shippingAddressData = transformFromAddress(shippingAddress)
+      cartResponse = await this.post(`/store/carts/${cartId}`, {
         billing_address: shippingAddressData,
       });
     }
 
-    // Get updated cart
-    const res = await this.get<CartResponse>(`/store/carts/${cartId}`);
-    return transformCart(res.cart)
+    return transformIntoCart(cartResponse.cart)
   }
 
   async completeCart(cart_id: string) {
@@ -338,18 +328,18 @@ export class CartService extends BaseService {
         `/store/carts/${cartId}/line-items`,
         body
       );
-      return transformCart(res.cart)
+      return transformIntoCart(res.cart)
     } else if (qty) {
       res = await this.post<CartResponse>(
         `/store/carts/${cartId}/line-items/${lineId}`,
         body
       );
-      return transformCart(res.cart)
+      return transformIntoCart(res.cart)
     } else {
       res = await this.delete<CartResponse>(
         `/store/carts/${cartId}/line-items/${lineId}`,
       )
-      return transformCart(res.parent)
+      return transformIntoCart(res.parent)
     }
 
   }

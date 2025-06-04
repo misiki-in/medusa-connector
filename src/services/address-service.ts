@@ -3,7 +3,7 @@ import { BaseService } from './base-service'
 import { PaginatedMedusaResponse } from '../types/api-response'
 import { PAGE_SIZE } from '../config'
 
-function transformAddressBody(address: Partial<Address>) {
+export function transformFromAddress(address: Partial<Address>) {
   return {
     phone: address.phone,
     address_1: address.address_1,
@@ -12,21 +12,23 @@ function transformAddressBody(address: Partial<Address>) {
     first_name: address.firstName,
     last_name: address.lastName,
     postal_code: address.zip,
-    country_code: address.countryCode,
-    company: address.state,
+    country_code: address.countryCode?.toLowerCase?.(),
+    metadata: {
+      state: address.state
+    }
   }
 
 }
 
-function transformAddress(address: any): Address {
+export function transformIntoAddress(address: any): Address {
   return {
     ...address,
     active: true,
-    state: address.company,
+    state: address?.metadata?.state,
     firstName: address.first_name,
     lastName: address.last_name,
     zip: address.postal_code,
-    countryCode: address.country_code,
+    countryCode: address.country_code?.toUpperCase?.(),
   }
 }
 /**
@@ -83,7 +85,7 @@ export class AddressService extends BaseService {
       pageSize: PAGE_SIZE,
       count: res.count,
       page,
-      data: res.addresses.map(transformAddress),
+      data: res.addresses.map(transformIntoAddress),
     }
   }
 
@@ -100,7 +102,7 @@ export class AddressService extends BaseService {
    */
   async fetchAddress(id: string): Promise<Address> {
     const res = await this.get<Address>(`/store/customers/me/addresses/${id}`)
-    return transformAddress(res)
+    return transformIntoAddress(res)
   }
 
   /**
@@ -124,7 +126,7 @@ export class AddressService extends BaseService {
   async saveAddress(address: Address) {
     if (address.id && address.id != 'new')
       return this.editAddress(address.id, address)
-    return this.post('/store/customers/me/addresses', transformAddressBody(address)) as Promise<Address>
+    return this.post('/store/customers/me/addresses', transformFromAddress(address)) as Promise<Address>
   }
 
   /**
@@ -143,7 +145,7 @@ export class AddressService extends BaseService {
    * });
    */
   async editAddress(id: string, address: Partial<Address>) {
-    return this.post(`/store/customers/me/addresses/${id}`, transformAddressBody(address)) as Promise<Address>
+    return this.post(`/store/customers/me/addresses/${id}`, transformFromAddress(address)) as Promise<Address>
   }
 
   /**
