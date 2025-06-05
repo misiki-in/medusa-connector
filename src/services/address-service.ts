@@ -4,6 +4,8 @@ import { PaginatedMedusaResponse } from '../types/api-response'
 import { PAGE_SIZE } from '../config'
 
 export function transformFromAddress(address: Partial<Address>) {
+  if (!address)
+    return address
   return {
     phone: address.phone,
     address_1: address.address_1,
@@ -21,14 +23,16 @@ export function transformFromAddress(address: Partial<Address>) {
 }
 
 export function transformIntoAddress(address: any): Address {
+  if (!address)
+    return address
   return {
     ...address,
     active: true,
-    state: address?.metadata?.state,
-    firstName: address.first_name,
-    lastName: address.last_name,
-    zip: address.postal_code,
-    countryCode: address.country_code?.toUpperCase?.(),
+    state: address?.metadata?.state || null,
+    firstName: address?.first_name || null,
+    lastName: address?.last_name || null,
+    zip: address?.postal_code || null,
+    countryCode: address?.country_code?.toUpperCase?.() || null,
   }
 }
 /**

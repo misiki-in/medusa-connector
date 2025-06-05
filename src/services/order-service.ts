@@ -1,5 +1,6 @@
 import { PAGE_SIZE, REGION_ID } from '../config'
 import type { PaginatedResponse, Order } from './../types'
+import { transformIntoAddress } from './address-service'
 import { BaseService } from './base-service'
 import { transformIntoLineItem } from './cart-service'
 
@@ -8,6 +9,7 @@ export function transformIntoOrder(order: any): Order {
     ...order,
     id: order?.id,
     orderNo: order?.id,
+    order_no: order?.id,
     parentOrderNo: order?.id,
     createdAt: order?.created_at,
     updatedAt: order?.updated_at,
@@ -15,6 +17,10 @@ export function transformIntoOrder(order: any): Order {
     lineItems: order?.items?.map(transformIntoLineItem),
     userEmail: order?.email,
     userPhone: order?.metadata?.phone,
+    shippingAddress: transformIntoAddress(order?.shipping_address),
+    billingAddress: transformIntoAddress(order?.billing_address),
+    shippingAddressId: order?.shipping_address?.id,
+    billingAddressId: order?.billing_address?.id,
     paymentStatus: order?.payment_status,
   }
 }
@@ -138,7 +144,8 @@ export class OrderService extends BaseService {
  */
 
   async getOrder(orderNo: string) {
-    return this.get(`/api/orders/${orderNo}`) as Promise<Order>
+    const res = await this.get<{ order: any }>(`/store/orders/${orderNo}`)
+    return transformIntoOrder(res?.order)
   }
 
   /**

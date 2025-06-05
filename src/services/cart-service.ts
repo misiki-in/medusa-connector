@@ -8,6 +8,26 @@ type CartResponse = PaginatedMedusaResponse<{
   cart: Cart;
 }>;
 
+export function transformIntoLineItem(item: Record<string, any>): CartLineItem {
+  return {
+    ...item,
+    subtotal: item.unit_price * item.quantity,
+    total: item.unit_price * item.quantity,
+    qty: item.quantity,
+    slug: item.product_handle,
+    description: item.product_description,
+    productId: item.product_id,
+    sku: item.variant_sku,
+    variantId: item.variant_id,
+    variant: {
+      id: item.variant_id,
+      title: item.variant_title,
+    },
+    price: item.unit_price,
+    isSelectedForCheckout: true,
+  };
+}
+
 function transformIntoCart(cart: Record<string, any>): Cart {
   return {
     ...cart,
@@ -17,25 +37,8 @@ function transformIntoCart(cart: Record<string, any>): Cart {
     billingAddressId: cart?.billing_address_id,
     billingAddress: transformIntoAddress(cart?.billing_address),
     qty: cart?.items.reduce((a, b: any) => a + b.quantity, 0),
-    lineItems: cart?.items?.map((item: any): CartLineItem => {
-      return {
-        ...item,
-        subtotal: item.unit_price * item.quantity,
-        total: item.unit_price * item.quantity,
-        qty: item.quantity,
-        slug: item.product_handle,
-        description: item.product_description,
-        productId: item.product_id,
-        sku: item.variant_sku,
-        variantId: item.variant_id,
-        variant: {
-          id: item.variant_id,
-          title: item.variant_title,
-        },
-        price: item.unit_price,
-        isSelectedForCheckout: true,
-      };
-    }),
+    shippingRateId: cart?.shipping_methods?.[0]?.shipping_option_id || null,
+    lineItems: cart?.items?.map(transformIntoLineItem),
   };
 }
 
@@ -285,7 +288,7 @@ export class CartService extends BaseService {
       cartResponse = await this.post(`/store/carts/${cartId}`, {
         billing_address: billingAddressData,
       });
-    } 
+    }
     /*else if (shippingAddressId && isBillingAddressSameAsShipping) {
       // Use shipping address as billing address
       cartResponse = await this.post(`/store/carts/${cartId}`, {
@@ -357,16 +360,7 @@ export class CartService extends BaseService {
         option_id: shippingRateId,
       }
     );
-
-    return {
-      ...res?.cart,
-      lineItems: res?.cart?.items?.map((item) => {
-        return {
-          ...item,
-          title: item.product.title,
-        };
-      }),
-    };
+    return transformIntoCart(res.cart)
   }
 }
 
