@@ -89,9 +89,10 @@ export class CartService extends BaseService {
   }
 
   async refereshCart() {
-    const cartId = localStorage.getItem("cart_id") || null;
-    if (!cartId) return null;
-    const res = await this.get<CartResponse>(`/store/carts/${cartId}`);
+    const res = await this.post<CartResponse>("/store/carts", {
+        region_id: REGION_ID
+    });
+    localStorage.setItem('cart_id', res.cart?.id)
     return transformIntoCart(res.cart)
   }
 
