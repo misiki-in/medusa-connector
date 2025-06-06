@@ -1,9 +1,38 @@
 import type { Category, PaginatedResponse } from '../types'
-import { ApiService } from './api-service'
+import { BaseService } from './base-service'
 
-export class CategoryService {
+interface CategoryResponse {
+  product_categories: any,
+}
+
+export function transformCategory(cat: any): Category {
+  return {
+    id: cat?.id,
+    slug: cat?.handle,
+    name: cat?.name,
+    parentCategoryId: cat?.parent_category_id,
+    createdAt: cat?.created_at,
+    description: cat?.description,
+    children: cat?.category_children || null,
+    parent: cat?.parent_category || null,
+    thumbnail: cat?.metadata?.thumbnail || null,
+    link: cat?.metadata?.link || null,
+    isActive: true,
+  }
+}
+
+export class CategoryService extends BaseService {
+  private static instance:CategoryService 
+
+  static getInstance(): CategoryService {
+    if (!CategoryService.instance) {
+      CategoryService.instance = new CategoryService()
+    }
+    return CategoryService.instance
+  }
+
 	// For storefront (public access)
-	static async fetchFooterCategories({
+	async fetchFooterCategories({
 		page = 1,
 		q = '',
 		sort = '-created_at',
@@ -15,83 +44,49 @@ export class CategoryService {
 		limit?: number
 	}) {
 		const offset = (page - 1) * limit
-		return ApiService.get<PaginatedResponse<Category>>(`/store/product-categories?limit=${limit}&offset=${offset}&q=${q}&order=${sort}`)
+		const res = await this.get<CategoryResponse>(`/store/product-categories?limit=${limit}&offset=${offset}&q=${q}&order=${sort}`)
+    return {
+      page,
+      data: res.product_categories?.map(transformCategory)
+    }
 	}
 
 	// For storefront (public access)
-	static async fetchFeaturedCategories({ limit = 100 }: { limit?: number }) {
-		return ApiService.get<PaginatedResponse<Category>>(`/store/product-categories?limit=${limit}&is_featured=true`)
+	async fetchFeaturedCategories({ limit = 100 }: { limit?: number }) {
+		const res = await this.get<CategoryResponse>(`/store/product-categories?limit=${limit}`)
+    console.log("Featured categories", res)
+    return {
+      data: res.product_categories?.map(transformCategory)
+    }
 	}
 
 	// For storefront (public access)
-	static async fetchCategory(id: string) {
-		return ApiService.get<Category>(`/store/product-categories/${id}`)
+	async fetchCategory(id: string) {
+		const res = await this.get<{ product_category: any }>(`/store/product-categories/${id}`)
+    return transformCategory(res?.product_category)
 	}
 
 	// For storefront (public access)
-	static async fetchAllCategories({ limit = 100 }: { limit?: number }) {
-		return ApiService.get<PaginatedResponse<Category>>(`/store/product-categories?limit=${limit}&expand=products`)
+	async fetchAllCategories({ limit = 100 }: { limit?: number }) {
+		const res = await this.get<CategoryResponse>(`/store/product-categories?limit=${limit}`)
+    return {
+      data: res.product_categories?.map(transformCategory)
+    }
 	}
 
 	// For storefront (public access)
-	static async fetchAllProductsOfCategory(id: string) {
-		return ApiService.get<Category>(`/store/product-categories/${id}?expand=products`)
+	async fetchAllProductsOfCategory(id: string) {
+		const res = await this.get<CategoryResponse>(`/store/product-categories/${id}`)
+    return {
+      data: res.product_categories?.map(transformCategory)
+    }
 	}
 
 	// For storefront (public access)
-	static async getMegamenu() {
-		return ApiService.get<PaginatedResponse<Category>>('/store/product-categories?parent_category_id=null&include_descendants_tree=true')
-	}
-
-	// ADMIN-ONLY METHODS
-
-	// For admin dashboard
-	static async listAdminCategories({
-		page = 1,
-		q = '',
-		sort = '-created_at',
-		limit = 20
-	}: {
-		page?: number
-		q?: string
-		sort?: string
-		limit?: number
-	}) {
-		const offset = (page - 1) * limit
-		return ApiService.get<PaginatedResponse<Category>>(`/admin/product-categories?limit=${limit}&offset=${offset}&q=${q}&order=${sort}`)
-	}
-
-	// For admin dashboard
-	static async createCategory(payload: {
-		name: string
-		description?: string
-		parent_category_id?: string
-		is_internal?: boolean
-		is_active?: boolean
-	}) {
-		return ApiService.post<Category>('/admin/product-categories', payload)
-	}
-
-	// For admin dashboard
-	static async updateCategory(
-		id: string,
-		payload: Partial<{
-			name: string
-			description: string
-			parent_category_id: string
-			is_internal: boolean
-			is_active: boolean
-		}>
-	) {
-		return ApiService.post<Category>(`/admin/product-categories/${id}`, payload)
-	}
-
-	// For admin dashboard
-	static async deleteCategory(id: string) {
-		return ApiService.delete<{
-			id: string
-			object: 'product-category'
-			deleted: boolean
-		}>(`/admin/product-categories/${id}`)
+	async getMegamenu() {
+		const res = await this.get<CategoryResponse>('/store/product-categories?parent_category_id=null&include_descendants_tree=true')
+    return res.product_categories?.map(transformCategory)
 	}
 }
+
+export const categoryService = CategoryService.getInstance()
