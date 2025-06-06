@@ -11,7 +11,7 @@ type ProductListResponse = PaginatedMedusaResponse<{
   products: Product[];
 }>;
 
-function transformProduct(product: any): any {
+export function transformProduct(product: any): any {
   const rawThumbnail = product.thumbnail || (product.images && product.images[0]?.url) || ''
   const rawImages = product.images ? product.images.map((img: any) => img.url) : []
 
