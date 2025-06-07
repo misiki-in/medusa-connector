@@ -1,17 +1,28 @@
 import type { Currency, PaginatedResponse } from '../types'
-import { ApiService } from './api-service'
+import { BaseService } from './base-service'
 
-export class CurrencyService {
-	static async listCurrencies() {
-		const response = await ApiService.get<{ currencies: Currency[] }>('/store/currencies')
+export class CurrencyService extends BaseService {
+  private static instance:CurrencyService 
+
+  static getInstance(): CurrencyService {
+    if (!CurrencyService.instance) {
+      CurrencyService.instance = new CurrencyService()
+    }
+    return CurrencyService.instance
+  }
+
+	async listCurrencies() {
+		const response = await this.get<{ currencies: Currency[] }>('/store/currencies')
 		return {
 			data: response.data.currencies || [],
 			count: response.data.currencies?.length || 0
 		}
 	}
 
-	static async getCurrency(code: string) {
-		const response = await ApiService.get<{ currency: Currency }>(`/store/currencies/${code}`)
+	async getCurrency(code: string) {
+		const response = await this.get<{ currency: Currency }>(`/store/currencies/${code}`)
 		return response.data.currency
 	}
 }
+
+export const currencyService = CurrencyService.getInstance()

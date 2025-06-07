@@ -1,36 +1,55 @@
 import type { User } from '../types'
-import { ApiService } from './api-service'
+import { BaseService } from './base-service'
 
-export class ProfileService {
-	static async getOne() {
-		return ApiService.get<User>('/store/customers/me')
+export class ProfileService extends BaseService {
+    private static instance: ProfileService
+
+  /**
+   * Get the singleton instance
+   */
+  /**
+ * Get the singleton instance
+ * 
+ * @returns {ProfileService} The singleton instance of ProfileService
+ */
+  static getInstance(): ProfileService {
+    if (!ProfileService.instance) {
+      ProfileService.instance = new ProfileService()
+    }
+    return ProfileService.instance
+  }
+
+	async getOne() {
+		return this.get<User>('/store/customers/me')
 	}
 
-	static async save(profile: Omit<User, 'id'>) {
-		return ApiService.post<User>('/store/customers/me', profile)
+	async save(profile: Omit<User, 'id'>) {
+		return this.post<User>('/store/customers/me', profile)
 	}
 
-	static async getAddresses() {
-		return ApiService.get('/store/customers/me/addresses')
+	async getAddresses() {
+		return this.get('/store/customers/me/addresses')
 	}
 
-	static async addAddress(address: any) {
-		return ApiService.post('/store/customers/me/addresses', address)
+	async addAddress(address: any) {
+		return this.post('/store/customers/me/addresses', address)
 	}
 
-	static async updateAddress(addressId: string, address: any) {
-		return ApiService.post(`/store/customers/me/addresses/${addressId}`, address)
+	async updateAddress(addressId: string, address: any) {
+		return this.post(`/store/customers/me/addresses/${addressId}`, address)
 	}
 
-	static async deleteAddress(addressId: string) {
-		return ApiService.delete(`/store/customers/me/addresses/${addressId}`)
+	async deleteAddress(addressId: string) {
+		return this.delete(`/store/customers/me/addresses/${addressId}`)
 	}
 
-	static async register(customerData: any) {
-		return ApiService.post('/store/customers', customerData)
+	async register(customerData: any) {
+		return this.post('/store/customers', customerData)
 	}
 
-	static async getAddress(addressId: string) {
-		return ApiService.get(`/store/customers/me/addresses/${addressId}`)
+	async getAddress(addressId: string) {
+		return this.get(`/store/customers/me/addresses/${addressId}`)
 	}
 }
+
+export const profileService = ProfileService.getInstance()
