@@ -1,4 +1,4 @@
-import { PAGE_SIZE, REGION_ID } from '../config'
+import { PAGE_SIZE } from '../config'
 import { ProductStatus, Variant, type Product } from '../types'
 import { PaginatedMedusaResponse } from '../types/api-response'
 import { BaseService } from './base-service'
@@ -102,7 +102,7 @@ export class ProductService extends BaseService {
     searchParams.set('limit', String(PAGE_SIZE))
     searchParams.set('q', search)
     searchParams.set('category_id', categories)
-    searchParams.set('region_id', REGION_ID)
+    searchParams.set('region_id', BaseService.getRegionId())
     searchParams.set('fields', '+variants.calculated_price')
 
     try {
@@ -177,7 +177,7 @@ export class ProductService extends BaseService {
   async getOne(handle: string) {
     try {
       const searchParams = new URLSearchParams()
-      searchParams.set('region_id', REGION_ID)
+      searchParams.set('region_id', BaseService.getRegionId())
       searchParams.set('fields', '+variants.calculated_price')
       searchParams.set('handle', handle)
       const resData = await this.get<ProductListResponse>('/store/products?' + searchParams.toString())

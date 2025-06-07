@@ -1,4 +1,4 @@
-import { PAGE_SIZE, REGION_ID } from '../config'
+import { PAGE_SIZE } from '../config'
 import type { PaginatedResponse, Order } from './../types'
 import { transformIntoAddress } from './address-service'
 import { BaseService } from './base-service'
@@ -68,7 +68,7 @@ export class OrderService extends BaseService {
     const searchParams = new URLSearchParams()
     searchParams.set('offset', ((page - 1) * PAGE_SIZE).toString())
     searchParams.set('limit', String(PAGE_SIZE))
-    searchParams.set('region_id', REGION_ID)
+    searchParams.set('region_id', BaseService.getRegionId())
 
     const res = await this.get<any>(`/store/orders`)
 

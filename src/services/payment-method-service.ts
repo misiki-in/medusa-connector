@@ -1,4 +1,4 @@
-import { PAGE_SIZE, paymentMethodFromId, REGION_ID } from '../config'
+import { PAGE_SIZE, paymentMethodFromId } from '../config'
 import { PaginatedMedusaResponse } from '../types/api-response'
 import type { PaymentMethod, PaginatedResponse } from './../types'
 import { BaseService } from './base-service'
@@ -52,7 +52,7 @@ export class PaymentMethodService extends BaseService {
  * const result = await paymentmethodService.list({ page: 1 });
  */
   async list({ page = 1, q = '', sort = '-createdAt' }) {
-    const res = await this.get<PaginatedMedusaResponse<PaginatedResponse<any>>>(`/store/payment-providers?region_id=` + REGION_ID)
+    const res = await this.get<PaginatedMedusaResponse<PaginatedResponse<any>>>(`/store/payment-providers?region_id=` + BaseService.getRegionId())
     console.log("list of payments", res)
     return {
       count: res.count,

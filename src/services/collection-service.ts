@@ -1,4 +1,4 @@
-import { PAGE_SIZE, REGION_ID } from '../config'
+import { PAGE_SIZE } from '../config'
 import type { Collection, PaginatedResponse } from '../types'
 import { BaseService } from './base-service'
 import { transformProduct } from './product-service'
@@ -64,7 +64,7 @@ export class CollectionService extends BaseService {
     //searchParams.set('offset', ((page - 1) * PAGE_SIZE).toString())
     //searchParams.set('limit', String(PAGE_SIZE))
     searchParams.set('collection_id', collectionId)
-    searchParams.set('region_id', REGION_ID)
+    searchParams.set('region_id', BaseService.getRegionId())
     searchParams.set('fields', '+variants.calculated_price')
 
     const res = await this.get<{ products: any[] }>(

@@ -1,16 +1,20 @@
-// export { ProductService } from './product-service'
-// export { RegionService } from './region-service'
-// export { CartService } from './cart-service'
-// export { AuthService } from './auth-service'
-// export { UserService } from './user-service'
-// export { StoreService } from './store-service'
-// export { CategoryService } from './category-service'
-// export { CollectionService } from './collection-service'
-export * from "./product-service";
-export * from "./region-service";
+export * from './base-service'
+export * from './product-service';
 export * from "./cart-service";
 export * from "./auth-service";
-export * from "./user-service";
 export * from "./store-service";
 export * from "./category-service";
 export * from "./collection-service";
+export * from './user-service';
+export * from './address-service'
+export * from './payment-method-service'
+export * from './checkout-service'
+export * from './order-service'
+export * from './menu-service'
+export * from './search-service'
+export * from './page-service'
+export * from './faq-service'
+export * from './wishlist-service'
+export * from './meilisearch-service'
+export * from './enquiry-service'
+export * from './coupon-service'

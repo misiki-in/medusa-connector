@@ -1,4 +1,3 @@
-import { REGION_ID } from '../config'
 import type { Category, PaginatedResponse } from '../types'
 import { BaseService } from './base-service'
 import { transformProduct } from './product-service'
@@ -81,7 +80,7 @@ export class CategoryService extends BaseService {
     const searchParams = new URLSearchParams()
     searchParams.set('category_id', id)
     searchParams.set('fields', '+variants.calculated_price')
-    searchParams.set('region_id', REGION_ID)
+    searchParams.set('region_id', BaseService.getRegionId())
 
 		const res = await this.get<{ products: any }>(`/store/products?` + searchParams.toString())
     return {

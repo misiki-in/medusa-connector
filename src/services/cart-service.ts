@@ -1,4 +1,3 @@
-import { REGION_ID } from "../config";
 import type { Cart, CartLineItem } from "../types";
 import { PaginatedMedusaResponse } from "../types/api-response";
 import { transformFromAddress, transformIntoAddress } from "./address-service";
@@ -58,7 +57,7 @@ export class CartService extends BaseService {
     }
     if (!cartId) {
       const cartRes = await this.post<CartResponse>("/store/carts", {
-        region_id: REGION_ID
+        region_id: BaseService.getRegionId()
       });
 
       cartId = cartRes?.cart?.id || (cartRes as any)?.id;
@@ -90,7 +89,7 @@ export class CartService extends BaseService {
 
   async refereshCart() {
     const res = await this.post<CartResponse>("/store/carts", {
-        region_id: REGION_ID
+        region_id: BaseService.getRegionId()
     });
     localStorage.setItem('cart_id', res.cart?.id)
     return transformIntoCart(res.cart)
@@ -177,7 +176,7 @@ export class CartService extends BaseService {
     let res: any = {};
     if (!cartId) {
       const cartRes = await this.post<CartResponse>("/store/carts", {
-        region_id: REGION_ID,
+        region_id: BaseService.getRegionId(),
       });
       cartId = cartRes?.cart?.id || (cartRes as any)?.id;
     }

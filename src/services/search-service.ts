@@ -1,4 +1,4 @@
-import { orderFromSort, REGION_ID } from "../config"
+import { orderFromSort } from "../config"
 import { ProductSearchResult } from "../types/product-search"
 import { BaseService } from "./base-service"
 import { transformProduct } from "./product-service"
@@ -110,7 +110,7 @@ export class SearchService extends BaseService {
 
       const newSearchParams = new URLSearchParams()
       newSearchParams.set('fields', '+variants.calculated_price')
-      newSearchParams.set('region_id', REGION_ID)
+      newSearchParams.set('region_id', BaseService.getRegionId())
       const order = getOrderbFromSort(searchParams.get('sort') || '')
       if (order)
         newSearchParams.set('order', order)
@@ -174,7 +174,7 @@ export class SearchService extends BaseService {
     try {
       const newSearchParams = new URLSearchParams()
       newSearchParams.set('fields', '+variants.calculated_price')
-      newSearchParams.set('region_id', REGION_ID)
+      newSearchParams.set('region_id', BaseService.getRegionId())
       newSearchParams.set('q', query)
       const res = await this.get<any>(`/store/products?` + newSearchParams.toString())
 

@@ -11,6 +11,7 @@ export const PUBLIC_MEDUSA_API_PREFIX = "/medusa"
  */
 export class BaseService {
   private static PUBLIC_MEDUSA_PUBLISHABLE_API_KEY: string
+  private static REGION_ID: string
   private _fetch: typeof fetch
 
   /**
@@ -25,6 +26,15 @@ export class BaseService {
 
   static setMedusaPublisableKey(key: string) {
     this.PUBLIC_MEDUSA_PUBLISHABLE_API_KEY = key
+  }
+
+  static setRegionId(id: string) {
+    this.REGION_ID = id
+  }
+
+  static getRegionId() {
+    if (this.REGION_ID) return this.REGION_ID
+    else throw "REGION_ID not set"
   }
 
   /**
