@@ -1,5 +1,7 @@
+import { REGION_ID } from '../config'
 import type { Category, PaginatedResponse } from '../types'
 import { BaseService } from './base-service'
+import { transformProduct } from './product-service'
 
 interface CategoryResponse {
   product_categories: any,
@@ -76,9 +78,14 @@ export class CategoryService extends BaseService {
 
 	// For storefront (public access)
 	async fetchAllProductsOfCategory(id: string) {
-		const res = await this.get<CategoryResponse>(`/store/product-categories/${id}`)
+    const searchParams = new URLSearchParams()
+    searchParams.set('category_id', id)
+    searchParams.set('fields', '+variants.calculated_price')
+    searchParams.set('region_id', REGION_ID)
+
+		const res = await this.get<{ products: any }>(`/store/products?` + searchParams.toString())
     return {
-      data: res.product_categories?.map(transformCategory)
+      data: res.products?.map(transformProduct)
     }
 	}
 

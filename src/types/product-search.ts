@@ -65,6 +65,19 @@ export interface ProductSearchResult {
 	}
 }
 
+export interface ProductSearchResult {
+  data: Product[]
+  count: number
+  totalPages: number
+  categoryHierarchy: Record<string, any>[]
+  facets: {
+    priceStat: { min?: number; max?: number }
+    categories: { name: string; count: number }[]
+    tags: { name: string; count: number }[]
+    allFilters?: Record<string, Record<string, number>>
+  }
+}
+
 /**
  * Complete page data structure for product pages
  */

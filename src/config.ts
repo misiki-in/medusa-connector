@@ -10,3 +10,9 @@ export const paymentMethodFromId = {
     img: '/static/payment/cod.png'
   }
 }
+
+export const orderFromSort: Record<string, string> = {
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  //price: 'variants.prices.calculated_amount',
+}
