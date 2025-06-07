@@ -7,7 +7,7 @@ type CartResponse = PaginatedMedusaResponse<{
   cart: Cart;
 }>;
 
-export function transformIntoLineItem(item: Record<string, any>): CartLineItem {
+export function transformIntoLineItem(item: Record<string, any>) {
   return {
     ...item,
     subtotal: item.unit_price * item.quantity,
@@ -27,7 +27,7 @@ export function transformIntoLineItem(item: Record<string, any>): CartLineItem {
   };
 }
 
-function transformIntoCart(cart: Record<string, any>): Cart {
+function transformIntoCart(cart: Record<string, any>) {
   return {
     ...cart,
     phone: cart?.metadata?.phone,
@@ -35,7 +35,7 @@ function transformIntoCart(cart: Record<string, any>): Cart {
     shippingAddressId: cart?.shipping_address_id,
     billingAddressId: cart?.billing_address_id,
     billingAddress: transformIntoAddress(cart?.billing_address),
-    qty: cart?.items.reduce((a, b: any) => a + b.quantity, 0),
+    qty: cart?.items.reduce((a: number, b: any) => a + b.quantity, 0),
     shippingRateId: cart?.shipping_methods?.[0]?.shipping_option_id || null,
     lineItems: cart?.items?.map(transformIntoLineItem),
   };
@@ -325,21 +325,20 @@ export class CartService extends BaseService {
       quantity: qty,
     };
 
-    let res: CartResponse;
     if (!lineId) {
-      res = await this.post<CartResponse>(
+      const res = await this.post<CartResponse>(
         `/store/carts/${cartId}/line-items`,
         body
       );
       return transformIntoCart(res.cart)
     } else if (qty) {
-      res = await this.post<CartResponse>(
+      const res = await this.post<CartResponse>(
         `/store/carts/${cartId}/line-items/${lineId}`,
         body
       );
       return transformIntoCart(res.cart)
     } else {
-      res = await this.delete<CartResponse>(
+      const res = await this.delete<{ parent: any }>(
         `/store/carts/${cartId}/line-items/${lineId}`,
       )
       return transformIntoCart(res.parent)

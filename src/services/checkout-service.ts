@@ -91,7 +91,7 @@ export class CheckoutService extends BaseService {
       provider_id: providerId
     })
 
-    const res = await this.post<{ type: string }>(`/store/carts/${cartId}/complete`, {})
+    const res = await this.post<{ error: string, order: any, type: string }>(`/store/carts/${cartId}/complete`, {})
 
     console.log("cart completion response", res)
     if (res.type == 'cart') throw res.error

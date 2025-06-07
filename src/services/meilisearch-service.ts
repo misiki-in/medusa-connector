@@ -42,7 +42,7 @@ export class MeilisearchService extends BaseService {
    *   categories: "footwear"
    * });
    */
-  async search(params: MsSearchParams): Promise<MeilisearchResponse> {
+  async search(params: MsSearchParams) {
     const {
       query,
       categories,

@@ -52,7 +52,7 @@ export class PaymentMethodService extends BaseService {
  * const result = await paymentmethodService.list({ page: 1 });
  */
   async list({ page = 1, q = '', sort = '-createdAt' }) {
-    const res = await this.get<PaginatedMedusaResponse<PaginatedResponse<any>>>(`/store/payment-providers?region_id=` + BaseService.getRegionId())
+    const res = await this.get<any>(`/store/payment-providers?region_id=` + BaseService.getRegionId())
     console.log("list of payments", res)
     return {
       count: res.count,

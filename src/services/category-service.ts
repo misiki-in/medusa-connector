@@ -6,8 +6,14 @@ interface CategoryResponse {
   product_categories: any,
 }
 
-export function transformCategory(cat: any): Category {
+type CategoryExtended = {
+  children: CategoryExtended[]
+  parent: CategoryExtended | null
+} & Category
+
+export function transformCategory(cat: any): CategoryExtended {
   return {
+    ...cat,
     id: cat?.id,
     slug: cat?.handle,
     name: cat?.name,

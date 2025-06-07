@@ -2,16 +2,21 @@ import { AxiosError } from 'axios'
 import type { User } from '../types'
 import { BaseService } from './base-service'
 
+type UserExtended = {
+  userId: string
+  role: string
+} | User
+
 function deleteMeCookie() {
   document.cookie = 'me=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 }
-function saveUserAsMeCookie(user: User) {
+function saveUserAsMeCookie(user: UserExtended) {
   const me = encodeURIComponent(JSON.stringify(user))
   document.cookie = 'me=' + me
 }
 
-function customerToUser(customer: Record<string, any>): User {
-  return { ...customer, userId: customer.id, role: "USER" } as User
+function customerToUser(customer: Record<string, any>): UserExtended {
+  return { ...customer, userId: customer.id, role: "USER" }
 }
 
 export class UserService extends BaseService {
@@ -44,7 +49,7 @@ export class UserService extends BaseService {
     firstName,
     lastName,
     phone,
-    email,
+email,
     password,
     cartId = null
   }: {

@@ -1,9 +1,17 @@
 import { PAGE_SIZE } from '../config'
-import type { Collection, PaginatedResponse } from '../types'
+import type { Collection, PaginatedResponse, Product } from '../types'
 import { BaseService } from './base-service'
 import { transformProduct } from './product-service'
 
-export function transformCollection(col: Record<string, any>): Collection {
+interface CollectionExtended extends Collection {
+  active: boolean
+  collectionvalues?: {
+    id: string
+    products: Product
+  }[]
+}
+
+export function transformCollection(col: any): CollectionExtended {
   return {
     ...col,
     id: col?.id,
@@ -27,7 +35,7 @@ export class CollectionService extends BaseService {
     return CollectionService.instance
   }
 
-  async addAssociatedProducts(col: Collection) {
+  async addAssociatedProducts(col: CollectionExtended) {
     col = transformCollection(col)
     col.collectionvalues = await this.getProducts(col?.id)
     return col
@@ -39,7 +47,7 @@ export class CollectionService extends BaseService {
     searchParams.set('limit', String(PAGE_SIZE))
     searchParams.set('fields', '+products')
 
-    const res = await this.get<PaginatedResponse<{ collections: any }>>(`/store/collections?` + searchParams.toString())
+    const res = await this.get<any>(`/store/collections?` + searchParams.toString())
     const collections = []
     for (const col of res.collections)
       collections.push(this.addAssociatedProducts(col))
@@ -54,7 +62,7 @@ export class CollectionService extends BaseService {
   }
 
   async getOne(id: string) {
-    const res = await this.get<Collection>(`/store/collections/${id}`)
+    const res = await this.get<{ collection: any }>(`/store/collections/${id}`)
     return await this.addAssociatedProducts(res.collection)
   }
 

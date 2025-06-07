@@ -50,7 +50,7 @@ export class SearchService extends BaseService {
    * const searchUrl = new URL('https://example.com/search?search=shoes&categories=footwear&priceFrom=50&priceTo=200');
    * const results = await searchService.searchWithUrl(searchUrl);
    */
-  async searchWithUrl(url: URL, slug?: string): Promise<ProductSearchResult> {
+  async searchWithUrl(url: URL, slug?: string) {
     try {
       const searchParams = new URLSearchParams(url.search)
       /*
@@ -170,7 +170,7 @@ export class SearchService extends BaseService {
    * // Simple search for "red shoes"
    * const results = await searchService.searchWithQuery("red shoes");
    */
-  async searchWithQuery(query: string): Promise<ProductSearchResult> {
+  async searchWithQuery(query: string) {
     try {
       const newSearchParams = new URLSearchParams()
       newSearchParams.set('fields', '+variants.calculated_price')

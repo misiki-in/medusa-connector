@@ -81,7 +81,7 @@ export class AddressService extends BaseService {
     searchParams.set('limit', String(PAGE_SIZE))
     searchParams.set('q', q)
 
-    const res = await this.get<PaginatedMedusaResponse<Address>>(
+    const res = await this.get<any>(
       `/store/customers/me/addresses?` + searchParams.toString(),
     )
 

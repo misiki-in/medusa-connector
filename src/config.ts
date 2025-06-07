@@ -1,6 +1,6 @@
 export const PAGE_SIZE = 20
 
-export const paymentMethodFromId = {
+export const paymentMethodFromId: Record<string, any> = {
   'pp_system_default': {
     name: 'COD',
     description: "Cash on delivery, manual payments.",

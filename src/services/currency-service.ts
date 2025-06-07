@@ -12,7 +12,7 @@ export class CurrencyService extends BaseService {
   }
 
 	async listCurrencies() {
-		const response = await this.get<{ currencies: Currency[] }>('/store/currencies')
+		const response = await this.get<{ data: { currencies: Currency[] } }>('/store/currencies')
 		return {
 			data: response.data.currencies || [],
 			count: response.data.currencies?.length || 0
@@ -20,7 +20,7 @@ export class CurrencyService extends BaseService {
 	}
 
 	async getCurrency(code: string) {
-		const response = await this.get<{ currency: Currency }>(`/store/currencies/${code}`)
+		const response = await this.get<{ data: { currency: Currency } }>(`/store/currencies/${code}`)
 		return response.data.currency
 	}
 }
