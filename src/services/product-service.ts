@@ -45,7 +45,9 @@ export function transformProduct(product: any): any {
         mrp: variant?.calculated_price?.original_amount || 0,
       }
     }) || [],
-    options: product.options || []
+    options: product.options || [],
+    attributes: product.attributes || [],
+    tags: product.tags || [],
   }
 }
 

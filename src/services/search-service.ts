@@ -7,7 +7,7 @@ function getOrderbFromSort(value: string): string {
   const arr = value?.split(':')
   console.log(value, arr)
   if (!(arr[0] in orderFromSort)) return ''
-  return (arr[1] == 'desc' ? '-' : '') + orderFromSort[arr[0]] 
+  return (arr[1] == 'desc' ? '-' : '') + orderFromSort[arr[0]]
 }
 
 /**
@@ -126,28 +126,16 @@ export class SearchService extends BaseService {
         count: res?.count || res?.totalHits || res?.estimatedTotalHits || 0,
         totalPages: res?.totalPages || 0,
         categoryHierarchy: res?.categories || [],
-        facets: {} 
-          /*
-          {
+        categories: res?.categories || [],
+        facets: {
           priceStat: {
-            min: res?.allfacetStats?.price?.min,
-            max: res?.allfacetStats?.price?.max
+            //min: res?.allfacetStats?.price?.min,
+            //max: res?.allfacetStats?.price?.max
           },
-          categories: Object.entries(
-            res?.facetDistribution?.['categories.category.slug'] || {}
-          ).map(([key, value]) => ({
-            name: key,
-            count: value
-          })),
-          tags: Object.entries(res?.facetDistribution?.['tags.name'] || {}).map(
-            ([key, value]) => ({
-              name: key,
-              count: value
-            })
-          ),
-          allFilters: res?.facetDistribution
-        }
-        */
+          categories: [],
+          tags: [],
+          allFilters: {},
+        },
       }
     } catch (error) {
       console.error(error)
@@ -178,30 +166,21 @@ export class SearchService extends BaseService {
       newSearchParams.set('q', query)
       const res = await this.get<any>(`/store/products?` + newSearchParams.toString())
 
-      return {
+            return {
         data: (res?.products || []).map(transformProduct),
-        count: res?.totalHits || res?.estimatedTotalHits || 0,
+        count: res?.count || res?.totalHits || res?.estimatedTotalHits || 0,
         totalPages: res?.totalPages || 0,
         categoryHierarchy: res?.categories || [],
+        categories: res?.categories || [],
         facets: {
           priceStat: {
-            min: res?.allfacetStats?.price?.min,
-            max: res?.allfacetStats?.price?.max
+            //min: res?.allfacetStats?.price?.min,
+            //max: res?.allfacetStats?.price?.max
           },
-          categories: Object.entries(
-            res?.facetDistribution?.['categories.category.slug'] || {}
-          ).map(([key, value]) => ({
-            name: key,
-            count: value
-          })),
-          tags: Object.entries(res?.facetDistribution?.['tags.name'] || {}).map(
-            ([key, value]) => ({
-              name: key,
-              count: value
-            })
-          ),
-          allFilters: res?.facetDistribution
-        }
+          categories: [],
+          tags: [],
+          allFilters: {},
+        },
       }
     } catch (error) {
       console.error(error)
