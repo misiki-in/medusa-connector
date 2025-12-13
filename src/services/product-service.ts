@@ -11,6 +11,17 @@ type ProductListResponse = PaginatedMedusaResponse<{
   products: Product[];
 }>;
 
+export function transformOption(option: any): any {
+  return {
+    ...option,
+    productId: option.product_id,
+    values: option.values.map((x: any) => ({
+      ...x,
+      optionId: option.id,
+    }))
+  }
+}
+
 export function transformProduct(product: any): any {
   const rawThumbnail = product.thumbnail || (product.images && product.images[0]?.url) || ''
   const rawImages = product.images ? product.images.map((img: any) => img.url) : []
@@ -43,9 +54,15 @@ export function transformProduct(product: any): any {
         ...variant,
         price: variant?.calculated_price?.calculated_amount || 0,
         mrp: variant?.calculated_price?.original_amount || 0,
+        options: variant.options.map((x: any) => ({
+          id: x.id,
+          optionId: x.option_id,
+          value: x.value,
+          variantId: variant.id,
+        }))
       }
     }) || [],
-    options: product.options || [],
+    options: product.options.map(transformOption) || [],
     attributes: product.attributes || [],
     tags: product.tags || [],
   }
@@ -124,7 +141,6 @@ export class ProductService extends BaseService {
       products.forEach((product) => {
         const rawThumbnail = product.thumbnail || (product.images && product.images[0]?.url) || ''
         const rawImages = product.images ? product.images.map((img) => img.url) : []
-        console.log('Validated Raw Thumbnail:', rawThumbnail, 'Raw Images:', rawImages)
       })
       const data = products.map(transformProduct)
 
@@ -192,7 +208,6 @@ export class ProductService extends BaseService {
       // Log and validate raw image URLs
       const rawThumbnail = product.thumbnail || (product.images && product.images[0]?.url) || ''
       const rawImages = product.images ? product.images.map((img) => img.url) : []
-      console.log('Validated Raw Thumbnail:', rawThumbnail, 'Raw Images:', rawImages)
 
       return transformProduct(product)
     } catch (error: any) {
