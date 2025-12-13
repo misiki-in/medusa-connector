@@ -3,6 +3,7 @@ export const PAGE_SIZE = 20
 export const paymentMethodFromId: Record<string, any> = {
   'pp_system_default': {
     name: 'COD',
+    code: 'cod',
     description: "Cash on delivery, manual payments.",
     apiKey: '',
     isTest: true,

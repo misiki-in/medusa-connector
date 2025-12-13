@@ -15,7 +15,7 @@ export function transformCategory(cat: any): CategoryExtended {
   return {
     ...cat,
     id: cat?.id,
-    slug: cat?.handle,
+    slug: cat?.id,
     name: cat?.name,
     parentCategoryId: cat?.parent_category_id,
     createdAt: cat?.created_at,

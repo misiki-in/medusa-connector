@@ -15,8 +15,8 @@ import { BaseService } from './base-service'
 
 export function transformIntoPaymentMethod(met: Record<string, string>): PaymentMethod {
   return {
-    ...paymentMethodFromId[met.id],
     ...met,
+    ...paymentMethodFromId[met.id],
   }
 }
 
@@ -53,7 +53,6 @@ export class PaymentMethodService extends BaseService {
  */
   async list({ page = 1, q = '', sort = '-createdAt' }) {
     const res = await this.get<any>(`/store/payment-providers?region_id=` + BaseService.getRegionId())
-    console.log("list of payments", res)
     return {
       count: res.count,
       data: res.payment_providers.map(transformIntoPaymentMethod),
