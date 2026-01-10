@@ -1,31 +1,20 @@
-import { paymentMethodFromId } from '../config'
-import type { Cart, Checkout } from './../types'
+import type { PaymentMethod } from '../types'
 import { BaseService } from './base-service'
-import { transformIntoOrder } from './order-service'
 
-function transformIntoShippingRate(option: any) {
-  return {
-    base_rate: option.amount,
-    ...option
-  }
+type ShopifyPaymentGateway = {
+  id: string
+  name: string
+  description: string
+  active: boolean
 }
-/**
- * CheckoutService provides functionality for managing checkout processes
- * in the Litekart platform.
- *
- * This service helps with:
- * - Processing payments through various payment gateways
- * - Managing checkout flows for different payment methods
- * - Handling shipping rates and order completion
- */
+
+type PaymentGatewaysResponse = {
+  payment_gateways: ShopifyPaymentGateway[]
+}
+
 export class CheckoutService extends BaseService {
   private static instance: CheckoutService
 
-  /**
-   * Get the singleton instance
-   *
-   * @returns {CheckoutService} The singleton instance of CheckoutService
-   */
   static getInstance(): CheckoutService {
     if (!CheckoutService.instance) {
       CheckoutService.instance = new CheckoutService()
@@ -34,268 +23,109 @@ export class CheckoutService extends BaseService {
   }
 
   /**
-   * Initiates Razorpay checkout process
-   *
-   * @param {Object} params - Parameters for Razorpay checkout
-   * @param {string} params.cartId - The cart ID for checkout
-   * @param {string} params.origin - The origin URL for callbacks
-   * @returns {Promise<Cart>} The cart with Razorpay payment information
-   * @api {post} /api/checkout/razorpay Razorpay checkout
-   *
-   * @example
-   * // Start Razorpay checkout
-   * const checkoutData = await checkoutService.checkoutRazorpay({
-   *   cartId: '123',
-   *   origin: 'https://example.com'
-   * });
+   * Get available payment gateways
+   * Note: Shopify doesn't have a direct payment gateways list endpoint via Admin API
+   * Payment methods are configured in Shopify admin and accessed through checkout
    */
-  async checkoutRazorpay({
-    cartId,
-    origin
-  }: {
-    cartId: string
-    origin: string
-  }) {
-    return this.post('/api/checkout/razorpay', {
-      cartId,
-      origin
-    }) as Promise<Cart>
-  }
-
-  /**
-   * Initiates Cash on Delivery checkout process
-   *
-   * @param {Object} params - Parameters for COD checkout
-   * @param {string} params.cartId - The cart ID for checkout
-   * @param {string} params.origin - The origin URL for callbacks
-   * @returns {Promise<Cart>} The cart with COD payment information
-   * @api {post} /api/checkout/cod COD checkout
-   *
-   * @example
-   * // Start COD checkout
-   * const checkoutData = await checkoutService.checkoutCOD({
-   *   cartId: '123',
-   *   origin: 'https://example.com'
-   * });
-   */
-  async checkoutCOD({ cartId, origin }: { cartId: string; origin: string }) {
-    const collectionResponse = await this.post<{ payment_collection: any }>(`/store/payment-collections`, {
-      cart_id: cartId
-    })
-
-    const paymentCollectionId = collectionResponse?.payment_collection?.id
-    if (!paymentCollectionId) throw new Error('Payment Collection creation failed')
-
-    const providerId = Object.keys(paymentMethodFromId).find((id: string) => paymentMethodFromId[id]?.name == 'COD')
-    await this.post(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
-      provider_id: providerId
-    })
-
-    const res = await this.post<{ error: string, order: any, type: string }>(`/store/carts/${cartId}/complete`, {})
-
-    console.log("cart completion response", res)
-    if (res.type == 'cart') throw res.error
-    else if (res.type != 'order') 
-      throw 'Invalid cart complete response'
-
-    return transformIntoOrder(res.order)
-    //return this.post('/api/checkout/cod', { cartId, origin }) as Promise<Cart>
-  }
-
-  /**
-   * Captures a Razorpay payment after authorization
-   *
-   * @param {Object} params - Parameters for capturing Razorpay payment
-   * @param {string} params.razorpay_order_id - Razorpay order ID
-   * @param {string} params.razorpay_payment_id - Razorpay payment ID
-   * @returns {Promise<any>} The capture response
-   * @api {post} /api/checkout/razorpay-capture Capture Razorpay payment
-   *
-   * @example
-   * // Capture Razorpay payment
-   * const captureResponse = await checkoutService.captureRazorpayPayment({
-   *   razorpay_order_id: 'order_123',
-   *   razorpay_payment_id: 'pay_456'
-   * });
-   */
-  async captureRazorpayPayment({
-    razorpay_order_id,
-    razorpay_payment_id
-  }: {
-    razorpay_order_id: string
-    razorpay_payment_id: string
-  }) {
-    return this.post('/api/checkout/razorpay-capture', {
-      razorpay_order_id,
-      razorpay_payment_id
-    })
-  }
-
-  /**
-   * Initiates PhonePe checkout process
-   *
-   * @param {Object} params - Parameters for PhonePe checkout
-   * @param {string} params.cartId - The cart ID for checkout
-   * @param {string} params.email - Customer email
-   * @param {string} params.phone - Customer phone number
-   * @param {string} params.origin - The origin URL for callbacks
-   * @returns {Promise<any>} The PhonePe checkout response
-   * @api {post} /api/checkout/phonepe PhonePe checkout
-   *
-   * @example
-   * // Start PhonePe checkout
-   * const checkoutData = await checkoutService.checkoutPhonepe({
-   *   cartId: '123',
-   *   email: 'customer@example.com',
-   *   phone: '9876543210',
-   *   origin: 'https://example.com'
-   * });
-   */
-  async checkoutPhonepe({
-    cartId,
-    email,
-    phone,
-    origin
-  }: {
-    cartId: string
-    email: string
-    phone: string
-    origin: string
-  }) {
-    return this.post('/api/checkout/phonepe', { cartId, email, phone, origin })
-  }
-
-  /**
-   * Retrieves shipping rates for a cart
-   *
-   * @param {Object} params - Parameters for getting shipping rates
-   * @param {string} params.cartId - The cart ID to get shipping rates for
-   * @returns {Promise<Checkout>} The shipping rates information
-   * @api {get} /api/shipping-rates/:cartId Get shipping rates
-   *
-   * @example
-   * // Get shipping rates for a cart
-   * const shippingRates = await checkoutService.getShippingRates({
-   *   cartId: '123'
-   * });
-   */
-  async getShippingRates({ cartId }: { cartId: string }) {
-    const res = await this.get<any>(`/store/shipping-options?cart_id=` + cartId)
-    console.log("fetched shipping rates", res)
-    return {
-      data: res.shipping_options.map(transformIntoShippingRate),
-      error: null,
-      message: "Shipping rates fetched successfully",
-      success: true
+  async getPaymentGateways() {
+    try {
+      // Shopify doesn't expose payment gateways via Admin API in the same way
+      // Payment methods are configured in the admin panel
+      return [
+        { id: 'credit_card', title: 'Credit Card', description: 'Pay with credit card', enabled: true },
+        { id: 'paypal', title: 'PayPal', description: 'Pay with PayPal', enabled: true },
+        { id: 'cod', title: 'Cash on Delivery', description: 'Pay when you receive', enabled: true },
+      ]
+    } catch (error: any) {
+      console.error("Error fetching payment gateways:", error)
+      return []
     }
   }
 
-  async capturePhonepePayment({
-    phonepe_order_id,
-    phonepe_payment_id
-  }: {
-    phonepe_order_id: string
-    phonepe_payment_id: string
-  }) {
-    return this.post('/api/checkout/phonepe-capture', {
-      phonepe_order_id,
-      phonepe_payment_id
-    })
-  }
-  async checkoutPaypal({
-    cartId,
-    origin,
-    return_url
-  }: {
-    cartId: string
-    origin: string
-    return_url: string
-  }) {
-    return this.post('/api/checkout/paypal', {
-      cartId,
-      origin,
-      return_url
-    })
-  }
-  async checkoutStripe({ cartId, origin }: { cartId: string; origin: string }) {
-    return this.post('/api/checkout/stripe', { cartId, origin })
-  }
-  async checkoutStripeCapture({
-    order_no,
-    pg,
-    payment_session_id,
-    storeId
-  }: {
-    order_no: string
-    pg: string
-    payment_session_id: string
-    storeId: string
-  }) {
-    return this.post('/api/checkout/stripe-capture', {
-      order_no,
-      pg,
-      payment_session_id,
-      storeId
-    })
+  /**
+   * Get shipping zones and methods
+   */
+  async getShippingMethods() {
+    try {
+      const response = await this.get<any[]>('/shipping_zones.json')
+      return response || []
+    } catch (error: any) {
+      console.error("Error fetching shipping methods:", error)
+      return []
+    }
   }
 
-  async createAffirmPayOrder({
-    cartId,
-    addressId,
-    origin,
-    storeId,
-    paymentMethodId
-  }: {
-    cartId: string
-    addressId: string
-    origin: string
-    storeId: string
-    paymentMethodId: string
+  /**
+   * Calculate shipping rates for a package
+   * Note: Requires Shopify Shipping API or use Storefront API
+   */
+  async calculateShipping(packageDetails: {
+    country: string
+    state: string
+    postcode: string
+    city: string
+    items: Array<{
+      product_id: number
+      quantity: number
+    }>
   }) {
-    return this.post('/api/affirm-checkout/create-order', {
-      cartId,
-      addressId,
-      origin,
-      storeId,
-      paymentMethodId
-    })
+    try {
+      throw new Error("Use Shopify Shipping API or Storefront API for shipping calculations")
+    } catch (error: any) {
+      console.error("Error calculating shipping:", error)
+      return []
+    }
   }
 
-  async cancelAffirmOrder({
-    orderId,
-    storeId,
-    origin
-  }: {
-    orderId: string
-    storeId: string
-    origin: string
+  /**
+   * Process checkout (create checkout via Storefront API)
+   * Note: This requires Storefront API for proper checkout flow
+   */
+  async processCheckout(checkoutData: {
+    customerId?: number
+    billing: any
+    shipping: any
+    paymentMethod: string
+    paymentMethodTitle: string
+    transactionId?: string
+    customerNote?: string
+    setPaid?: boolean
+    lineItems: Array<{
+      variantId: number
+      quantity: number
+    }>
   }) {
-    return this.post('/api/checkout/affirm/cancel-order', {
-      orderId,
-      storeId,
-      origin
-    })
+    try {
+      throw new Error("Use Shopify Storefront API for checkout operations. Admin API doesn't support checkout creation.")
+    } catch (error: any) {
+      console.error("Error processing checkout:", error)
+      throw error
+    }
   }
 
-  async confirmAffirmOrder({
-    affirmToken,
-    orderId,
-    storeId,
-    origin
-  }: {
-    affirmToken: string
-    orderId: string
-    storeId: string
-    origin: string
-  }) {
-    return this.post('/api/checkout/affirm/confirm-order', {
-      affirmToken,
-      orderId,
-      storeId,
-      origin
-    })
+  /**
+   * Get checkout session (Storefront API)
+   */
+  async getCheckoutSession(sessionId: string) {
+    try {
+      throw new Error("Use Shopify Storefront API for checkout sessions")
+    } catch (error: any) {
+      console.error("Error fetching checkout session:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Create a checkout URL (Storefront API)
+   */
+  async createCheckoutUrl(lineItems: Array<{ variantId: number; quantity: number }>) {
+    try {
+      throw new Error("Use Shopify Storefront API to create checkout URL")
+    } catch (error: any) {
+      console.error("Error creating checkout URL:", error)
+      throw error
+    }
   }
 }
 
-// // Use singleton instance
 export const checkoutService = CheckoutService.getInstance()

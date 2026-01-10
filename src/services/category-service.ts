@@ -1,35 +1,71 @@
 import type { Category, PaginatedResponse } from '../types'
 import { BaseService } from './base-service'
-import { transformProduct } from './product-service'
 
-interface CategoryResponse {
-  product_categories: any,
+type ShopifyCollect = {
+  id: number
+  collection_id: number
+  product_id: number
+  position: number
+  sort_value: string
+  created_at: string
+  updated_at: string
 }
 
-type CategoryExtended = {
+type ShopifyCollectionResponse = {
+  id: number
+  handle: string
+  title: string
+  description: string
+  description_html: string
+  updated_at: string
+  image: {
+    id: number
+    src: string
+    alt: string
+  } | null
+  products_count: number
+  sort_order: string
+  template_suffix: string
+  published_at: string
+}
+
+type ShopifyCustomCollectionResponse = ShopifyCollectionResponse & {
+  body_html: string
+  image: {
+    id: number
+    src: string
+    alt: string
+  } | null
+}
+
+type CollectionListResponse = {
+  collections: ShopifyCollectionResponse[]
+}
+
+export interface CategoryExtended extends Category {
   children: CategoryExtended[]
   parent: CategoryExtended | null
-} & Category
+}
 
-export function transformCategory(cat: any): CategoryExtended {
+export function transformShopifyCollection(cat: ShopifyCollectionResponse): CategoryExtended {
   return {
-    ...cat,
-    id: cat?.id,
-    slug: cat?.id,
-    name: cat?.name,
-    parentCategoryId: cat?.parent_category_id,
-    createdAt: cat?.created_at,
-    description: cat?.description,
-    children: Array.isArray(cat?.category_children) ? cat?.category_children?.map(transformCategory) : null,
-    parent: cat?.parent_category ? transformCategory(cat?.parent_category) : null,
-    thumbnail: cat?.metadata?.thumbnail || null,
-    link: cat?.metadata?.link || null,
+    id: cat.id.toString(),
+    slug: cat.handle,
+    name: cat.title,
+    parentCategoryId: '',
+    createdAt: cat.updated_at,
+    description: cat.description || cat.description_html || '',
+    children: [],
+    parent: null,
+    thumbnail: cat.image?.src || null,
+    link: '/collections/' + cat.handle,
     isActive: true,
+    count: cat.products_count || 0,
   }
 }
 
 export class CategoryService extends BaseService {
-  private static instance:CategoryService 
+  private static instance: CategoryService
 
   static getInstance(): CategoryService {
     if (!CategoryService.instance) {
@@ -38,67 +74,101 @@ export class CategoryService extends BaseService {
     return CategoryService.instance
   }
 
-	// For storefront (public access)
-	async fetchFooterCategories({
-		page = 1,
-		q = '',
-		sort = '-created_at',
-		limit = 20
-	}: {
-		page?: number
-		q?: string
-		sort?: string
-		limit?: number
-	}) {
-		const offset = (page - 1) * limit
-		const res = await this.get<CategoryResponse>(`/store/product-categories?limit=${limit}&offset=${offset}&q=${q}&order=${sort}`)
+  /**
+   * Fetch collections for footer
+   */
+  async fetchFooterCategories({
+    page = 1,
+    perPage = 20
+  }: {
+    page?: number
+    perPage?: number
+  } = {}) {
+    const searchParams = new URLSearchParams()
+    searchParams.set('limit', String(perPage))
+
+    const res = await this.get<CollectionListResponse>('/collections.json?' + searchParams.toString())
+    
     return {
       page,
-      data: res.product_categories?.map(transformCategory)
+      data: res.collections?.map(transformShopifyCollection) || []
     }
-	}
+  }
 
-	// For storefront (public access)
-	async fetchFeaturedCategories({ limit = 100 }: { limit?: number }) {
-		const res = await this.get<CategoryResponse>(`/store/product-categories?limit=${limit}`)
-    console.log("Featured categories", res)
-    return {
-      data: res.product_categories?.map(transformCategory)
-    }
-	}
-
-	// For storefront (public access)
-	async fetchCategory(id: string) {
-		const res = await this.get<{ product_category: any }>(`/store/product-categories/${id}`)
-    return transformCategory(res?.product_category)
-	}
-
-	// For storefront (public access)
-	async fetchAllCategories({ limit = 100 }: { limit?: number }) {
-		const res = await this.get<CategoryResponse>(`/store/product-categories?limit=${limit}`)
-    return {
-      data: res.product_categories?.map(transformCategory)
-    }
-	}
-
-	// For storefront (public access)
-	async fetchAllProductsOfCategory(id: string) {
+  /**
+   * Fetch featured collections
+   */
+  async fetchFeaturedCollections({ limit = 100 }: { limit?: number } = {}) {
     const searchParams = new URLSearchParams()
-    searchParams.set('category_id', id)
-    searchParams.set('fields', '+variants.calculated_price')
-    searchParams.set('region_id', BaseService.getRegionId())
+    searchParams.set('limit', String(limit))
 
-		const res = await this.get<{ products: any }>(`/store/products?` + searchParams.toString())
+    const res = await this.get<CollectionListResponse>('/collections.json?' + searchParams.toString())
+    
+    console.log("Featured collections", res)
     return {
-      data: res.products?.map(transformProduct)
+      data: res.collections?.map(transformShopifyCollection) || []
     }
-	}
+  }
 
-	// For storefront (public access)
-	async getMegamenu() {
-		const res = await this.get<CategoryResponse>('/store/product-categories?parent_category_id=null&include_descendants_tree=true')
-    return res.product_categories?.map(transformCategory)
-	}
+  /**
+   * Fetch a single collection by ID
+   */
+  async fetchCategory(id: string) {
+    const cat = await this.get<ShopifyCollectionResponse>('/collections/' + id + '.json')
+    return transformShopifyCollection(cat)
+  }
+
+  /**
+   * Fetch all collections
+   */
+  async fetchAllCategories({ limit = 100 }: { limit?: number } = {}) {
+    const searchParams = new URLSearchParams()
+    searchParams.set('limit', String(limit))
+
+    const res = await this.get<CollectionListResponse>('/collections.json?' + searchParams.toString())
+    
+    return {
+      data: res.collections?.map(transformShopifyCollection) || []
+    }
+  }
+
+  /**
+   * Fetch all products of a collection
+   */
+  async fetchAllProductsOfCategory(id: string, { page = 1, perPage = PAGE_SIZE } = {}) {
+    const searchParams = new URLSearchParams()
+    searchParams.set('limit', String(perPage))
+    searchParams.set('page', String(Math.max(1, page - 1)))
+
+    const res = await this.get<any>('/collections/' + id + '/products.json?' + searchParams.toString())
+    
+    // Import dynamically to avoid circular dependency
+    const { productService } = await import('./product-service')
+    const { transformShopifyProduct } = await import('./product-service')
+    
+    return {
+      data: res.products?.map(transformShopifyProduct) || [],
+      total: res.products?.length || 0,
+      page,
+      pageSize: perPage
+    }
+  }
+
+  /**
+   * Get megamenu (hierarchical collections)
+   * Note: Shopify collections are flat, no parent-child hierarchy by default
+   */
+  async getMegamenu() {
+    const searchParams = new URLSearchParams()
+    searchParams.set('limit', '100')
+
+    const res = await this.get<CollectionListResponse>('/collections.json?' + searchParams.toString())
+    
+    const collections = res.collections?.map(transformShopifyCollection) || []
+    
+    // All collections are root level in Shopify
+    return collections
+  }
 }
 
 export const categoryService = CategoryService.getInstance()

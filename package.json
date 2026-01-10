@@ -1,7 +1,7 @@
 {
-  "name": "@misiki/medusa-connector",
-  "version": "2.2.0",
-  "description": "A powerful API connector for integrating Medusa with svelte-commerce platform",
+  "name": "@misiki/shopify-connector",
+  "version": "1.0.0",
+  "description": "A powerful API connector for integrating Shopify with svelte-commerce platform",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -35,24 +35,25 @@
     "format": "biome format --write ."
   },
   "keywords": [
-    "medusa",
+    "shopify",
     "litekart",
     "ecommerce",
     "api",
     "connector",
     "integration",
-    "typescript"
+    "typescript",
+    "svelte"
   ],
   "author": "Swadesh Behera",
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/misiki-in/medusa-connector.git"
+    "url": "git+https://github.com/misiki-in/shopify-connector.git"
   },
   "bugs": {
-    "url": "https://github.com/misiki-in/medusa-connector/issues"
+    "url": "https://github.com/misiki-in/shopify-connector/issues"
   },
-  "homepage": "https://github.com/misiki-in/medusa-connector#readme",
+  "homepage": "https://github.com/misiki-in/shopify-connector#readme",
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@types/node": "^22.13.1",

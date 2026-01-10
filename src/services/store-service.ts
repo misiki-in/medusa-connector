@@ -4,12 +4,11 @@ import { CategoryService } from "./category-service"
 
 /**
  * StoreService provides functionality for retrieving store information
- * in the Litekart platform.
+ * in the Shopify platform.
  *
  * This service helps with:
- * - Retrieving store details by ID or domain
- * - Accessing store configuration and settings
- * - Facilitating multi-store operations
+ * - Retrieving shop details
+ * - Accessing shop configuration and settings
  */
 export class StoreService extends BaseService {
   private static instance: StoreService
@@ -33,24 +32,27 @@ export class StoreService extends BaseService {
   }
 
   /**
-   * Retrieves store details by ID or domain name
+   * Retrieves shop details
+   *
+   * @returns {Promise<any>} The shop details
+   */
+  async getShop() {
+    try {
+      const shop = await this.get<any>('/shop.json')
+      return shop
+    } catch (error: any) {
+      console.error("Error fetching shop:", error)
+      return {}
+    }
+  }
+
+  /**
+   * Retrieves store details (legacy method, uses config)
    *
    * @param {Object} params - The parameters for fetching the store
    * @param {string} [params.storeId] - The ID of the store to fetch
    * @param {string} [params.domain] - The domain name of the store to fetch
    * @returns {Promise<any>} The store details
-   * @api {get} /api/stores/public-details Get store details
-   *
-   * @example
-   * // Get store by ID
-   * const store = await storeService.getStoreByIdOrDomain({
-   *   storeId: '123'
-   * });
-   *
-   * // Get store by domain
-   * const store = await storeService.getStoreByIdOrDomain({
-   *   domain: 'mystore.example.com'
-   * });
    */
   async getStoreByIdOrDomain({
     storeId,

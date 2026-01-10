@@ -1,270 +1,367 @@
 import { PAGE_SIZE } from '../config'
 import type { PaginatedResponse, Order } from './../types'
-import { transformIntoAddress } from './address-service'
 import { BaseService } from './base-service'
-import { transformIntoLineItem } from './cart-service'
 
-export function transformIntoOrder(order: any): Order {
+type ShopifyOrderResponse = {
+  id: number
+  email: string
+  created_at: string
+  updated_at: string
+  fulfilled_at: null
+  currency: string
+  total_price: string
+  subtotal_price: string
+  total_tax: string
+  total_discounts: string
+  total_shipping_price_set: {
+    shop_money: { amount: string }
+    presentment_money: { amount: string }
+  }
+  total_line_items_price_set: {
+    shop_money: { amount: string }
+    presentment_money: { amount: string }
+  }
+  total_price_set: {
+    shop_money: { amount: string }
+    presentment_money: { amount: string }
+  }
+  subtotal_price_set: {
+    shop_money: { amount: string }
+    presentment_money: { amount: string }
+  }
+  total_shipping_price: string
+  total_taxes: string
+  total_discounts: string
+  total_weight: number
+  financial_status: string
+  fulfillment_status: string | null
+  name: string
+  number: number
+  order_number: number
+  processed_at: string
+  source_name: string
+  customer: {
+    id: number
+    email: string
+    created_at: string
+    updated_at: string
+    first_name: string
+    last_name: string
+    orders_count: number
+    state: string
+    total_spent: string
+    verified_email: boolean
+    tags: string
+    default_address?: {
+      id: number
+      first_name: string
+      last_name: string
+      company: string
+      address1: string
+      address2: string
+      city: string
+      province: string
+      country: string
+      zip: string
+      phone: string
+    }
+  }
+  line_items: Array<{
+    id: number
+    product_id: number
+    variant_id: number
+    title: string
+    quantity: number
+    sku: string
+    variant_title: string
+    vendor: string
+    fulfillment_status: string | null
+    price: string
+    total_discount: string
+    properties: any[]
+    tax_lines: any[]
+  }>
+  shipping_address: {
+    first_name: string
+    last_name: string
+    company: string
+    address1: string
+    address2: string
+    city: string
+    province: string
+    country: string
+    zip: string
+    phone: string
+  }
+  billing_address: {
+    first_name: string
+    last_name: string
+    company: string
+    address1: string
+    address2: string
+    city: string
+    province: string
+    country: string
+    zip: string
+    phone: string
+  }
+  discount_codes: Array<{
+    code: string
+    amount: string
+    type: string
+  }>
+  note: string
+  tags: string
+  refunds: Array<{
+    id: number
+    created_at: string
+    note: string
+    user_id: number
+    refund_line_items: any[]
+    transactions: any[]
+  }>
+}
+
+type OrderListResponse = {
+  orders: ShopifyOrderResponse[]
+}
+
+export function transformShopifyOrder(order: ShopifyOrderResponse): Order {
   return {
-    ...order,
-    id: order?.id,
-    orderNo: order?.id,
-    order_no: order?.id,
-    parentOrderNo: order?.id,
-    createdAt: order?.created_at,
-    updatedAt: order?.updated_at,
+    id: order.id.toString(),
+    orderNo: order.name,
+    order_no: order.name,
+    parentOrderNo: '',
+    createdAt: order.created_at,
+    updatedAt: order.updated_at,
+    status: order.fulfillment_status || order.financial_status,
     fulfillments: [],
-    lineItems: order?.items?.map(transformIntoLineItem),
-    userEmail: order?.email,
-    userPhone: order?.metadata?.phone,
-    shippingAddress: transformIntoAddress(order?.shipping_address),
-    billingAddress: transformIntoAddress(order?.billing_address),
-    shippingAddressId: order?.shipping_address?.id,
-    billingAddressId: order?.billing_address?.id,
-    paymentStatus: order?.payment_status,
+    lineItems: order.line_items?.map((item) => ({
+      id: item.id.toString(),
+      productId: item.product_id.toString(),
+      variantId: item.variant_id?.toString() || '',
+      qty: item.quantity,
+      slug: '',
+      description: '',
+      price: parseFloat(item.price),
+      total: parseFloat(item.price) * item.quantity,
+      subtotal: parseFloat(item.price) * item.quantity,
+      sku: item.sku,
+      title: item.title,
+      image: '',
+      isSelectedForCheckout: true,
+    })) || [],
+    userEmail: order.email || order.customer?.email || '',
+    userPhone: order.shipping_address?.phone || '',
+    shippingAddress: {
+      firstName: order.shipping_address?.first_name || '',
+      lastName: order.shipping_address?.last_name || '',
+      address1: order.shipping_address?.address1 || '',
+      address2: order.shipping_address?.address2 || '',
+      city: order.shipping_address?.city || '',
+      state: order.shipping_address?.province || '',
+      zipCode: order.shipping_address?.zip || '',
+      country: order.shipping_address?.country || '',
+      phone: order.shipping_address?.phone || '',
+    },
+    billingAddress: {
+      firstName: order.billing_address?.first_name || '',
+      lastName: order.billing_address?.last_name || '',
+      address1: order.billing_address?.address1 || '',
+      address2: order.billing_address?.address2 || '',
+      city: order.billing_address?.city || '',
+      state: order.billing_address?.province || '',
+      zipCode: order.billing_address?.zip || '',
+      country: order.billing_address?.country || '',
+      phone: order.billing_address?.phone || '',
+      email: order.email || '',
+    },
+    shippingAddressId: '',
+    billingAddressId: '',
+    paymentMethod: order.financial_status,
+    paymentMethodTitle: order.financial_status,
+    paymentStatus: order.financial_status,
+    subtotal: parseFloat(order.subtotal_price || '0'),
+    total: parseFloat(order.total_price || '0'),
+    discount: parseFloat(order.total_discounts || '0'),
+    shipping: parseFloat(order.total_shipping_price || '0'),
+    tax: parseFloat(order.total_tax || '0'),
   }
 }
-/**
- * OrderService provides functionality for working with specific resources
- * in the Litekart API.
- *
- * This service helps with:
- * - Main functionality point 1
- * - Main functionality point 2
- * - Main functionality point 3
- */
+
 export class OrderService extends BaseService {
   private static instance: OrderService
 
-  /**
-   * Get the singleton instance
-   */
-  /**
- * Get the singleton instance
- * 
- * @returns {OrderService} The singleton instance of OrderService
- */
   static getInstance(): OrderService {
     if (!OrderService.instance) {
       OrderService.instance = new OrderService()
     }
     return OrderService.instance
   }
+
   /**
- * Fetches Order from the API
- * 
- * @param {Object} options - The request options
- * @param {number} [options.page=1] - The page number for pagination
- * @param {string} [options.q=''] - Search query string
- * @param {string} [options.sort='-createdAt'] - Sort order
- * @returns {Promise<any>} The requested data
- * @api {get} /api/order Get order
- * 
- * @example
- * // Example usage
- * const result = await orderService.list({ page: 1 });
- */
-  async list({ page = 1, q = '', sort = '-createdAt' }): Promise<PaginatedResponse<Order>> {
+   * Fetch orders for a customer
+   */
+  async list({ page = 1, perPage = PAGE_SIZE, customerId }: { page?: number; perPage?: number; customerId?: number } = {}): Promise<PaginatedResponse<Order>> {
     const searchParams = new URLSearchParams()
-    searchParams.set('offset', ((page - 1) * PAGE_SIZE).toString())
-    searchParams.set('limit', String(PAGE_SIZE))
-    searchParams.set('region_id', BaseService.getRegionId())
+    searchParams.set('limit', String(perPage))
+    searchParams.set('status', 'any')
+    
+    if (customerId) {
+      searchParams.set('customer_id', String(customerId))
+    }
 
-    const res = await this.get<any>(`/store/orders`)
+    try {
+      const res = await this.get<OrderListResponse>('/orders.json?' + searchParams.toString())
 
-    return {
-      page,
-      pageSize: PAGE_SIZE,
-      count: res.count,
-      data: res.orders.map(transformIntoOrder),
-      noOfPage: Math.ceil(res.count / PAGE_SIZE)
+      return {
+        page,
+        pageSize: perPage,
+        count: res.orders?.length || 0,
+        noOfPage: 1,
+        data: res.orders?.map(transformShopifyOrder) || []
+      }
+    } catch (error: any) {
+      console.error("Error fetching orders:", error)
+      return {
+        page,
+        pageSize: perPage,
+        count: 0,
+        noOfPage: 1,
+        data: []
+      }
     }
   }
 
   /**
- * Fetches Order from the API
- * 
- * @param {Object} options - The request options
- * @param {number} [options.page=1] - The page number for pagination
- * @param {string} [options.q=''] - Search query string
- * @param {string} [options.sort='-createdAt'] - Sort order
- * @returns {Promise<any>} The requested data
- * @api {get} /api/order Get order
- * 
- * @example
- * // Example usage
- * const result = await orderService.listOrdersByParent({ page: 1 });
- */
-
-  async listOrdersByParent({
-    orderNo,
-    cartId
-  }: {
-    orderNo: string | null
-    cartId: string | null
-  }): Promise<PaginatedResponse<Order>> {
-    // orderNo is actually the order id instead
-    const res = await this.get<{ order: any }>(`/store/orders/${orderNo}`)
-    return {
-      pageSize: PAGE_SIZE,
-      page: 1,
-      count: 1,
-      noOfPage: 1,
-      data: [transformIntoOrder(res?.order)]
-    }
-  }
-
-  /**
- * Fetches a single Order by ID
- * 
- * @param {string} id - The ID of the order to fetch
- * @returns {Promise<any>} The requested order
- * @api {get} /api/orders/:id Get order by ID
- * 
- * @example
- * // Example usage
- * const order = await orderService.fetchOrder('123');
- */
-
+   * Fetch a single order by ID
+   */
   async fetchOrder(id: string) {
-    const res = await this.get<{ order: any }>(`/store/orders/${id}`)
-    return transformIntoOrder(res?.order)
+    try {
+      const order = await this.get<ShopifyOrderResponse>('/orders/' + id + '.json')
+      return transformShopifyOrder(order)
+    } catch (error: any) {
+      console.error("Error fetching order:", error)
+      throw error
+    }
   }
 
   /**
- * Fetches a single Order by ID
- * 
- * @param {string} id - The ID of the order to fetch
- * @returns {Promise<any>} The requested order
- * @api {get} /api/orders/:id Get order by ID
- * 
- * @example
- * // Example usage
- * const order = await orderService.getOrder('123');
- */
-
+   * Get order by order number
+   */
   async getOrder(orderNo: string) {
-    const res = await this.get<{ order: any }>(`/store/orders/${orderNo}`)
-    return transformIntoOrder(res?.order)
+    try {
+      const orders = await this.list({ perPage: 1 })
+      const order = orders.data.find((o) => o.orderNo === orderNo)
+      if (order) {
+        return this.fetchOrder(order.id)
+      }
+      throw new Error('Order not found')
+    } catch (error: any) {
+      console.error("Error getting order:", error)
+      throw error
+    }
   }
 
   /**
- * Fetches a single Order by ID
- * 
- * @param {string} id - The ID of the order to fetch
- * @returns {Promise<any>} The requested order
- * @api {get} /api/orders/:id Get order by ID
- * 
- * @example
- * // Example usage
- * const order = await orderService.fetchTrackOrder('123');
- */
-
-  async fetchTrackOrder(id: string) {
-    return this.get(`/api/orders/list-by-parent?id=${id}`) as Promise<
-      PaginatedResponse<Order>
-    >
-  }
-
-  async paySuccessPageHit(orderId: string) {
-    return this.get(`/api/orders/${orderId}`) as Promise<Order>
-  }
-
-  async codCheckout({
-    address,
-    cartId,
-    origin,
-    paymentMethod,
-    paymentProviderId,
-    prescription
-  }: any) {
-    return this.post<Order>(`/api/carts/${cartId}/payment-sessions`, {
-      provider_id: paymentProviderId
-    })
-  }
-
-  async cashfreeCheckout({
-    address,
-    paymentMethod,
-    prescription,
-    origin
-  }: any) {
-    return this.get('/api/orders/me') as Promise<Order>
-  }
-
-  async razorpayCheckout({
-    address,
-    paymentMethod,
-    prescription,
-    origin
-  }: any) {
-    return this.get('/api/orders/me') as Promise<Order>
-  }
-
-  async stripeCheckout({ address, paymentMethod, prescription, origin }: any) {
-    return this.get('/api/orders/me') as Promise<Order>
-  }
-
-  async razorCapture({ rpPaymentId, rpOrderId, origin }: any) {
-    return this.get('/api/orders/me') as Promise<Order>
+   * Create an order (usually for POS or draft orders)
+   */
+  async createOrder(orderData: {
+    customerId?: number
+    billing: any
+    shipping: any
+    paymentMethod: string
+    paymentMethodTitle: string
+    transactionId?: string
+    customerNote?: string
+    lineItems: Array<{
+      variantId: number
+      quantity: number
+    }>
+  }) {
+    try {
+      const response = await this.post<ShopifyOrderResponse>('/orders.json', {
+        order: {
+          customer: { id: orderData.customerId },
+          billing_address: orderData.billing,
+          shipping_address: orderData.shipping,
+          line_items: orderData.lineItems,
+          note: orderData.customerNote || '',
+        }
+      })
+      return transformShopifyOrder(response)
+    } catch (error: any) {
+      console.error("Error creating order:", error)
+      throw error
+    }
   }
 
   /**
- * Fetches Order from the API
- * 
- * @param {Object} options - The request options
- * @param {number} [options.page=1] - The page number for pagination
- * @param {string} [options.q=''] - Search query string
- * @param {string} [options.sort='-createdAt'] - Sort order
- * @returns {Promise<any>} The requested data
- * @api {get} /api/order Get order
- * 
- * @example
- * // Example usage
- * const result = await orderService.listPublic({ page: 1 });
- */
-
-  async listPublic() {
-    return this.get('/api/orders/public/list') as Promise<
-      PaginatedResponse<Order>
-    >
+   * Update order status
+   */
+  async updateOrderStatus(orderId: string, status: string) {
+    try {
+      const response = await this.put<ShopifyOrderResponse>('/orders/' + orderId + '.json', {
+        order: {
+          id: parseInt(orderId),
+          fulfillment_status: status
+        }
+      })
+      return transformShopifyOrder(response)
+    } catch (error: any) {
+      console.error("Error updating order status:", error)
+      throw error
+    }
   }
 
   /**
- * Fetches a single Order by ID
- * 
- * @param {string} id - The ID of the order to fetch
- * @returns {Promise<any>} The requested order
- * @api {get} /api/orders/:id Get order by ID
- * 
- * @example
- * // Example usage
- * const order = await orderService.getOrderByEmailAndOTP('123');
- */
-
-  async getOrderByEmailAndOTP({ email, otp }: { email: string; otp: string }) {
-    return this.get(
-      `/api/orders-public/list?otp=${otp}&email=${email}&sort=-createdAt`
-    ) as Promise<PaginatedResponse<Order>>
+   * Get order notes/attributes
+   */
+  async getOrderNotes(orderId: string) {
+    try {
+      const order = await this.fetchOrder(orderId)
+      return [{ note: order.note, customerNote: false }]
+    } catch (error: any) {
+      console.error("Error fetching order notes:", error)
+      return []
+    }
   }
 
-  async buyAgain() {
-    return this.get('/api/orders/buy-again') as Promise<
-      PaginatedResponse<Order>
-    >
+  /**
+   * Add order note
+   */
+  async addOrderNote(orderId: string, note: string, customerNote = false) {
+    try {
+      const response = await this.put<ShopifyOrderResponse>('/orders/' + orderId + '.json', {
+        order: {
+          id: parseInt(orderId),
+          note: note
+        }
+      })
+      return response
+    } catch (error: any) {
+      console.error("Error adding order note:", error)
+      throw error
+    }
   }
 
-  async submitReview({ rating, review, productId, variantId, uploadedImages }: any) {
-    return this.post<any>(`/api/products/ratings-and-reviews`, {
-      rating,
-      review,
-      productId,
-      variantId,
-      uploadedImages
-    })
+  /**
+   * Process refund
+   */
+  async refundOrder(orderId: string, amount: number, reason?: string) {
+    try {
+      const response = await this.post<any>('/orders/' + orderId + '/refunds.json', {
+        refund: {
+          note: reason || '',
+          amount: amount.toFixed(2),
+        }
+      })
+      return response
+    } catch (error: any) {
+      console.error("Error processing refund:", error)
+      throw error
+    }
   }
 }
 
-// Use singleton instance
 export const orderService = OrderService.getInstance()
-

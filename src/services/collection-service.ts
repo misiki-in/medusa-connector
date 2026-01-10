@@ -1,27 +1,28 @@
-import { PAGE_SIZE } from '../config'
-import type { Collection, PaginatedResponse, Product } from '../types'
+import type { Collection, PaginatedResponse } from '../types'
 import { BaseService } from './base-service'
-import { transformProduct } from './product-service'
 
-interface CollectionExtended extends Collection {
-  active: boolean
-  collectionvalues?: {
-    id: string
-    products: Product
-  }[]
+type ShopifyTagResponse = {
+  id: number
+  handle: string
+  name: string
+  product_count: number
 }
 
-export function transformCollection(col: any): CollectionExtended {
+type TagListResponse = {
+  tags: ShopifyTagResponse[]
+}
+
+export function transformShopifyTag(tag: ShopifyTagResponse): Collection {
   return {
-    ...col,
-    id: col?.id,
-    name: col?.title,
-    slug: col?.handle,
-    createdAt: col?.created_at,
-    updatedAt: col?.updated_at,
-    active: true,
-    metaDescription: "",
-    metaTitle: "",
+    id: tag.id.toString(),
+    slug: tag.handle,
+    name: tag.name,
+    description: '',
+    image: null,
+    status: 'active',
+    createdAt: '',
+    updatedAt: '',
+    productsCount: tag.product_count,
   }
 }
 
@@ -35,57 +36,75 @@ export class CollectionService extends BaseService {
     return CollectionService.instance
   }
 
-  async addAssociatedProducts(col: CollectionExtended) {
-    col = transformCollection(col)
-    col.collectionvalues = await this.getProducts(col?.id)
-    return col
-  }
-
-  async list({ page = 1, limit = 10, q = '', sort = '-created_at' }) {
+  /**
+   * List all collections (tags)
+   */
+  async list({ page = 1, perPage = PAGE_SIZE } = {}): Promise<PaginatedResponse<Collection>> {
     const searchParams = new URLSearchParams()
-    searchParams.set('offset', ((page - 1) * PAGE_SIZE).toString())
-    searchParams.set('limit', String(PAGE_SIZE))
-    searchParams.set('fields', '+products')
+    searchParams.set('limit', String(perPage))
 
-    const res = await this.get<any>(`/store/collections?` + searchParams.toString())
-    const collections = []
-    for (const col of res.collections)
-      collections.push(this.addAssociatedProducts(col))
+    try {
+      const res = await this.get<TagListResponse>('/products/tags.json?' + searchParams.toString())
 
-    return {
-      page,
-      pageSize: PAGE_SIZE,
-      count: res.count,
-      data: await Promise.all(collections),
-      noOfPage: Math.ceil(res.count / PAGE_SIZE)
+      return {
+        page,
+        pageSize: perPage,
+        count: res.tags?.length || 0,
+        noOfPage: 1,
+        data: res.tags?.map(transformShopifyTag) || []
+      }
+    } catch (error: any) {
+      console.error("Error fetching collections:", error)
+      return {
+        page,
+        pageSize: perPage,
+        count: 0,
+        noOfPage: 1,
+        data: []
+      }
     }
   }
 
-  async getOne(id: string) {
-    const res = await this.get<{ collection: any }>(`/store/collections/${id}`)
-    return await this.addAssociatedProducts(res.collection)
+  /**
+   * Get a single collection by ID
+   */
+  async get(id: string) {
+    try {
+      // Shopify doesn't have a single tag endpoint, filter from list
+      const tags = await this.list()
+      const tag = tags.data.find(t => t.id === id)
+      if (tag) return tag
+      throw new Error('Tag not found')
+    } catch (error: any) {
+      console.error("Error fetching collection:", error)
+      throw error
+    }
   }
 
-  async getProducts(collectionId: string) {
-    console.warn("getProducts not implemented")
+  /**
+   * Get products by collection (tag)
+   */
+  async getProducts(id: string, { page = 1, perPage = PAGE_SIZE } = {}) {
     const searchParams = new URLSearchParams()
-    //searchParams.set('offset', ((page - 1) * PAGE_SIZE).toString())
-    //searchParams.set('limit', String(PAGE_SIZE))
-    searchParams.set('collection_id', collectionId)
-    searchParams.set('region_id', BaseService.getRegionId())
-    searchParams.set('fields', '+variants.calculated_price')
+    searchParams.set('limit', String(perPage))
+    searchParams.set('page', String(Math.max(1, page - 1)))
+    searchParams.set('tag', id)
 
-    const res = await this.get<{ products: any[] }>(
-      `/store/products?` + searchParams.toString(),
-    );
+    try {
+      const res = await this.get<any>('/products.json?' + searchParams.toString())
+      const { productService } = await import('./product-service')
+      const { transformShopifyProduct } = await import('./product-service')
 
-    return res.products.map((x) => {
       return {
-        id: x?.id,
-        products: transformProduct(x)
+        data: res.products?.map(transformShopifyProduct) || [],
+        total: res.products?.length || 0,
+        page,
+        pageSize: perPage
       }
-    })
-    //return ApiService.get(`/store/collections/${collectionId}/products?page=${page}&limit=${limit}`)
+    } catch (error: any) {
+      console.error("Error fetching collection products:", error)
+      return { data: [], total: 0, page, pageSize: perPage }
+    }
   }
 }
 

@@ -1,17 +1,20 @@
-export const PUBLIC_MEDUSA_API_PREFIX = "/medusa"
+export const PUBLIC_SHOPIFY_API_PREFIX = "/admin/api/2024-10"
+
+export const SHOPIFY_STORE_DOMAIN: string
+
+export const SHOPIFY_ACCESS_TOKEN: string
 
 /**
  * BaseService provides core HTTP functionality for all service classes
- * in the Medusa API client.
+ * in the Shopify API client.
  *
  * This service helps with:
  * - Performing standardized HTTP requests (GET, POST, PUT, PATCH, DELETE)
  * - Handling response parsing and type conversion
  * - Providing a configurable fetch implementation
+ * - Authenticating with Shopify Admin API using Access Token
  */
 export class BaseService {
-  private static PUBLIC_MEDUSA_PUBLISHABLE_API_KEY: string
-  private static REGION_ID: string
   private _fetch: typeof fetch
 
   /**
@@ -24,17 +27,16 @@ export class BaseService {
     this._fetch = fetchFn || fetch
   }
 
-  static setMedusaPublisableKey(key: string) {
-    this.PUBLIC_MEDUSA_PUBLISHABLE_API_KEY = key
+  static setShopifyCredentials(storeDomain: string, accessToken: string) {
+    SHOPIFY_STORE_DOMAIN = storeDomain
+    SHOPIFY_ACCESS_TOKEN = accessToken
   }
 
-  static setRegionId(id: string) {
-    this.REGION_ID = id
-  }
-
-  static getRegionId() {
-    if (this.REGION_ID) return this.REGION_ID
-    else throw "REGION_ID not set"
+  static getCredentials() {
+    if (!SHOPIFY_STORE_DOMAIN || !SHOPIFY_ACCESS_TOKEN) {
+      throw "Shopify credentials not set. Call BaseService.setShopifyCredentials() first"
+    }
+    return { storeDomain: SHOPIFY_STORE_DOMAIN, accessToken: SHOPIFY_ACCESS_TOKEN }
   }
 
   /**
@@ -59,7 +61,7 @@ export class BaseService {
 
   private async safeFetch(url: string, data?: any) {
     try {
-      return await this._fetch(PUBLIC_MEDUSA_API_PREFIX + url, data)
+      return await this._fetch(`https://${SHOPIFY_STORE_DOMAIN}${PUBLIC_SHOPIFY_API_PREFIX}${url}`, data)
     } catch (e: any) {
       if (navigator.onLine) {
         throw { message: 'Please check your internet connection and try again' }
@@ -77,11 +79,17 @@ export class BaseService {
   }
 
   async callFetch<T>(url: string, body: any) {
+    const { storeDomain, accessToken } = BaseService.getCredentials()
+    
+    const authHeader = 'Basic ' + btoa(accessToken + ':')
+    
     const response = await this.safeFetch(url, {
       ...body,
       headers: {
         ...body.headers,
-        'x-publishable-api-key': BaseService.PUBLIC_MEDUSA_PUBLISHABLE_API_KEY
+        'X-Shopify-Access-Token': accessToken,
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
       }
     })
 
@@ -89,7 +97,9 @@ export class BaseService {
       await this.handleError(response)
     }
 
-    return (await response.json()) as T
+    // Handle empty responses
+    const text = await response.text()
+    return text ? JSON.parse(text) as T : null
   }
   /**
    * Perform a GET request

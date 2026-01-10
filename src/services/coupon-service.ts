@@ -2,13 +2,10 @@ import type { Coupon, PaginatedResponse } from './../types'
 import { BaseService } from './base-service'
 
 /**
- * CouponService provides functionality for working with specific resources
- * in the Litekart API.
+ * CouponService provides functionality for working with Shopify price rules
+ * and discount codes.
  *
- * This service helps with:
- * - Main functionality point 1
- * - Main functionality point 2
- * - Main functionality point 3
+ * Note: Shopify manages discounts through Price Rules and Discount Codes APIs
  */
 export class CouponService extends BaseService {
   private static instance: CouponService
@@ -16,32 +13,19 @@ export class CouponService extends BaseService {
   /**
    * Get the singleton instance
    */
-  /**
- * Get the singleton instance
- * 
- * @returns {CouponService} The singleton instance of CouponService
- */
   static getInstance(): CouponService {
     if (!CouponService.instance) {
       CouponService.instance = new CouponService()
     }
     return CouponService.instance
   }
+
   /**
- * Fetches Coupon from the API
- * 
- * @param {Object} options - The request options
- * @param {number} [options.page=1] - The page number for pagination
- * @param {string} [options.q=''] - Search query string
- * @param {string} [options.sort='-createdAt'] - Sort order
- * @returns {Promise<any>} The requested data
- * @api {get} /api/coupon Get coupon
- * 
- * @example
- * // Example usage
- * const result = await couponService.listCoupons({ page: 1 });
- */
+   * List all coupons (price rules with discount codes)
+   */
   async listCoupons({ page = 1, q = '', sort = '-createdAt' }) {
+    // Shopify doesn't have a direct list endpoint for all coupons
+    // This would require listing price rules
     return {
       data: [],
       count: 0,
@@ -54,48 +38,83 @@ export class CouponService extends BaseService {
   }
 
   /**
- * Fetches a single Coupon by ID
- * 
- * @param {string} id - The ID of the coupon to fetch
- * @returns {Promise<any>} The requested coupon
- * @api {get} /api/coupon/:id Get coupon by ID
- * 
- * @example
- * // Example usage
- * const coupon = await couponService.getCoupon('123');
- */
-
+   * Get a single coupon by ID
+   */
   async getCoupon(id: string) {
-    return {}
+    try {
+      const priceRule = await this.get<any>('/price_rules/' + id + '.json')
+      return {
+        id: priceRule.id,
+        code: priceRule.title,
+        discountType: priceRule.target === 'line_item' ? 'percentage' : 'shipping',
+        discountValue: priceRule.value,
+        minPurchase: priceRule.minimum_order_amount,
+        usageLimit: priceRule.usage_limit,
+        usedCount: priceRule.usage_count,
+        startDate: priceRule.starts_at,
+        endDate: priceRule.ends_at,
+      }
+    } catch (error: any) {
+      console.error("Error fetching coupon:", error)
+      return {}
+    }
   }
 
   /**
- * Creates a new Coupon
- * 
- * @param {any} data - The data to create
- * @returns {Promise<any>} The created coupon
- * @api {post} /api/coupon Create coupon
- * 
- * @example
- * // Example usage
- * const newCoupon = await couponService.createCoupon({ 
- *   // required fields
- * });
- */
-
-  async createCoupon(coupons: Omit<Coupon, 'id'>) {
-    return {}
+   * Validate a coupon code
+   */
+  async validateCoupon(code: string) {
+    try {
+      // This requires Storefront API or checking discount codes
+      return { valid: false, message: "Use Shopify Storefront API for coupon validation" }
+    } catch (error: any) {
+      return { valid: false, message: error.message }
+    }
   }
 
-  async patchCoupon(id: string, coupons: Partial<Coupon>) {
-    return {}
+  /**
+   * Create a new price rule (coupon)
+   */
+  async createCoupon(coupon: Omit<Coupon, 'id'>) {
+    try {
+      const response = await this.post<any>('/price_rules.json', {
+        price_rule: {
+          title: coupon.code,
+          target_type: 'line_item',
+          value: '-' + coupon.discountValue,
+          value_type: 'fixed_amount',
+          customer_selection: 'all',
+          starts_at: new Date().toISOString(),
+        }
+      })
+      return response
+    } catch (error: any) {
+      console.error("Error creating coupon:", error)
+      return {}
+    }
+  }
+
+  async patchCoupon(id: string, coupon: Partial<Coupon>) {
+    try {
+      const response = await this.put<any>('/price_rules/' + id + '.json', {
+        price_rule: coupon
+      })
+      return response
+    } catch (error: any) {
+      console.error("Error patching coupon:", error)
+      return {}
+    }
   }
 
   async deleteCoupon(id: string) {
-    return {}
+    try {
+      await this.delete<any>('/price_rules/' + id + '.json')
+      return { success: true }
+    } catch (error: any) {
+      console.error("Error deleting coupon:", error)
+      return { success: false }
+    }
   }
 }
 
-// // Use singleton instance
 export const couponService = CouponService.getInstance()
-

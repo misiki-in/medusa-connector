@@ -1,8 +1,90 @@
-import type { User, verifyEmail } from '../types'
+import type { User } from '../types'
 import { BaseService } from './base-service'
 
+type ShopifyCustomerResponse = {
+  id: number
+  created_at: string
+  updated_at: string
+  email: string
+  first_name: string
+  last_name: string
+  orders_count: number
+  state: string
+  total_spent: string
+  verified_email: boolean
+  accepts_marketing: boolean
+  tags: string
+  default_address?: {
+    id: number
+    first_name: string
+    last_name: string
+    company: string
+    address1: string
+    address2: string
+    city: string
+    province: string
+    country: string
+    zip: string
+    phone: string
+  }
+  addresses: Array<{
+    id: number
+    first_name: string
+    last_name: string
+    company: string
+    address1: string
+    address2: string
+    city: string
+    province: string
+    country: string
+    zip: string
+    phone: string
+  }>
+}
+
+function transformShopifyCustomer(customer: ShopifyCustomerResponse): User {
+  return {
+    id: customer.id.toString(),
+    email: customer.email,
+    firstName: customer.first_name || '',
+    lastName: customer.last_name || '',
+    phone: customer.default_address?.phone || '',
+    avatar: '',
+    role: 'customer',
+    active: customer.state === 'enabled',
+    createdAt: customer.created_at,
+    billingAddress: customer.default_address ? {
+      firstName: customer.default_address.first_name,
+      lastName: customer.default_address.last_name,
+      company: customer.default_address.company,
+      address1: customer.default_address.address1,
+      address2: customer.default_address.address2,
+      city: customer.default_address.city,
+      state: customer.default_address.province,
+      country: customer.default_address.country,
+      zip: customer.default_address.zip,
+      phone: customer.default_address.phone,
+      email: customer.email
+    } : undefined,
+    shippingAddress: customer.default_address ? {
+      firstName: customer.default_address.first_name,
+      lastName: customer.default_address.last_name,
+      company: customer.default_address.company,
+      address1: customer.default_address.address1,
+      address2: customer.default_address.address2,
+      city: customer.default_address.city,
+      state: customer.default_address.province,
+      country: customer.default_address.country,
+      zip: customer.default_address.zip,
+      phone: customer.default_address.phone,
+      email: customer.email
+    } : undefined,
+  }
+}
+
 export class AuthService extends BaseService {
-  private static instance:AuthService 
+  private static instance: AuthService
+  private currentUser: User | null = null
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -11,161 +93,72 @@ export class AuthService extends BaseService {
     return AuthService.instance
   }
 
+  /**
+   * Get current user (requires authentication with customer access token)
+   * Note: Shopify uses different endpoints for storefront vs admin API
+   */
   async getMe() {
-    return this.get<User>('/store/customers/me')
-  }
-
-  async verifyEmail(email: string, token: string) {
-    return this.post<verifyEmail>('/auth/customer/email/verify', {
-      email,
-      token
-    })
-  }
-
-  async signup({
-    firstName,
-    lastName,
-    phone,
-    email,
-    password,
-    passwordConfirmation,
-    cartId = null
-  }: {
-    firstName: string
-    lastName: string
-    phone: string
-    email: string
-    password: string
-    passwordConfirmation: string
-    cartId?: string | null
-  }) {
-    const payload = {
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      password,
-      phone
+    try {
+      const customer = await this.get<ShopifyCustomerResponse>('/customers/me.json')
+      this.currentUser = transformShopifyCustomer(customer)
+      return this.currentUser
+    } catch (error: any) {
+      console.error("Error getting current user:", error)
+      throw error
     }
-
-    const response = await this.post<User>('/store/customers', payload)
-
-    // If cartId exists, associate the cart with the new customer
-
-
-    return response
   }
 
-  async joinAsVendor({
-    firstName,
-    lastName,
-    businessName,
-    phone,
+  /**
+   * Login with email and password
+   * Note: Shopify Admin API doesn't have a direct login endpoint
+   * Use storefront API for customer authentication or manage tokens externally
+   */
+  async login({ email, password }: { email: string; password: string }) {
+    try {
+      // Shopify Admin API doesn't support password-based login
+      // For customer authentication, use Storefront API or implement custom solution
+      throw new Error("Shopify Admin API doesn't support password-based login. Use Storefront API for customer authentication.")
+    } catch (error: any) {
+      console.error("Error logging in:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Register a new customer
+   */
+  async signup({
     email,
     password,
-
-    role,
-    origin
-  }: {
-    firstName: string
-    lastName: string
-    businessName: string
-    phone: string
-    email: string
-    password: string
-    role: string
-    origin: string
-  }) {
-    // Note: Medusa might not have a direct equivalent for vendor registration
-    // This implementation assumes a custom endpoint would be added in Medusa
-    return this.post<User>('/auth/customer/email/register', {
-      first_name: firstName,
-      last_name: lastName,
-      business_name: businessName,
-      phone,
-      email,
-      password,
-      role,
-      origin
-    })
-  }
-
-  async joinAsAdmin({
     firstName,
-    lastName,
-    businessName,
-    phone,
-    email,
-    password,
-    origin
+    lastName
   }: {
-    firstName: string
-    lastName: string
-    businessName: string
-    phone: string
     email: string
     password: string
-    origin: string
+    firstName: string
+    lastName: string
   }) {
-    // Note: Medusa separates admin APIs, this would typically be handled differently
-    // For consistency with the original function, we'll keep it but note the limitation
-    return this.post<User>('/admin/auth/register', {
-      first_name: firstName,
-      last_name: lastName,
-      business_name: businessName,
-      phone,
-      email,
-      password,
-      origin
-    })
+    try {
+      const response = await this.post<ShopifyCustomerResponse>('/customers.json', {
+        customer: {
+          email,
+          password,
+          first_name: firstName,
+          last_name: lastName,
+          verified_email: true,
+          accepts_marketing: false
+        }
+      })
+      return transformShopifyCustomer(response)
+    } catch (error: any) {
+      console.error("Error signing up:", error)
+      throw error
+    }
   }
 
-  async login({ email, password, cartId = null }: { email: string; password: string; cartId?: string | null }) {
-    const response = await this.post<User>('/auth/session', {
-      email,
-      password
-    })
-
-
-    return response
-  }
-
-  async forgotPassword({ email, referrer }: { email: string; referrer: string }) {
-    return this.post<User>('/auth/customer/email/reset-password', {
-      email,
-      referrer
-    })
-  }
-
-  async changePassword(body: { old: string; password: string }) {
-    return this.post<User>('/auth/customer/email/update', {
-      old_password: body.old,
-      new_password: body.password
-    })
-  }
-
-  async resetPassword({ userId, token, password }: { userId: string; token: string; password: string }) {
-    return this.post<User>('/auth/customer/email/reset-password', {
-      token,
-      password
-    })
-  }
-
-  async getOtp({ phone }: { phone: string }) {
-    // Note: Standard Medusa doesn't have OTP functionality
-    // This would be a custom implementation
-    return this.post<User>('/auth/customer/phone/otp', { phone })
-  }
-
-  async verifyOtp({ phone, otp }: { phone: string; otp: string }) {
-    // Note: Standard Medusa doesn't have OTP functionality
-    // This would be a custom implementation
-    return this.post<User>('/auth/customer/phone/verify', { phone, otp })
-  }
-
-  async logout() {
-    return this.delete('/auth/session')
-  }
-
+  /**
+   * Update customer profile
+   */
   async updateProfile({
     id,
     firstName,
@@ -178,16 +171,99 @@ export class AuthService extends BaseService {
     firstName: string
     lastName: string
     email: string
-    phone: string
+    phone?: string
     avatar?: string
   }) {
-    return this.post('/auth/customer/email/update', {
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      phone,
-      avatar
-    })
+    try {
+      const response = await this.put<ShopifyCustomerResponse>('/customers/' + id + '.json', {
+        customer: {
+          id: parseInt(id),
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          phone
+        }
+      })
+      return transformShopifyCustomer(response)
+    } catch (error: any) {
+      console.error("Error updating profile:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Update billing address
+   */
+  async updateBillingAddress(id: string, billing: any) {
+    try {
+      const response = await this.put<ShopifyCustomerResponse>('/customers/' + id + '/addresses.json', {
+        address: billing
+      })
+      return transformShopifyCustomer(response)
+    } catch (error: any) {
+      console.error("Error updating billing address:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Update shipping address
+   */
+  async updateShippingAddress(id: string, shipping: any) {
+    try {
+      const response = await this.put<ShopifyCustomerResponse>('/customers/' + id + '/addresses.json', {
+        address: shipping
+      })
+      return transformShopifyCustomer(response)
+    } catch (error: any) {
+      console.error("Error updating shipping address:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Change password
+   */
+  async changePassword(id: string, oldPassword: string, newPassword: string) {
+    try {
+      const response = await this.put<any>('/customers/' + id + '/update_password.json', {
+        id: parseInt(id),
+        password: newPassword,
+        password_confirmation: newPassword
+      })
+      return response
+    } catch (error: any) {
+      console.error("Error changing password:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Get customer by ID
+   */
+  async getCustomer(id: string) {
+    try {
+      const customer = await this.get<ShopifyCustomerResponse>('/customers/' + id + '.json')
+      return transformShopifyCustomer(customer)
+    } catch (error: any) {
+      console.error("Error getting customer:", error)
+      throw error
+    }
+  }
+
+  /**
+   * Logout (clears local user state)
+   */
+  logout() {
+    this.currentUser = null
+    return true
+  }
+
+  /**
+   * Get current user
+   */
+  getCurrentUser() {
+    return this.currentUser
   }
 }
 
