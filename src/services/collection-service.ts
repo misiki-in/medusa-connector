@@ -41,7 +41,7 @@ export class CollectionService extends BaseService {
    */
   async list({ page = 1, perPage = PAGE_SIZE } = {}): Promise<PaginatedResponse<Collection>> {
     const searchParams = new URLSearchParams()
-    searchParams.set('limit', String(perPage))
+    searchParams.set('limit', String(Math.min(perPage, 250)))
 
     try {
       const res = await this.get<TagListResponse>('/products/tags.json?' + searchParams.toString())
@@ -86,8 +86,7 @@ export class CollectionService extends BaseService {
    */
   async getProducts(id: string, { page = 1, perPage = PAGE_SIZE } = {}) {
     const searchParams = new URLSearchParams()
-    searchParams.set('limit', String(perPage))
-    searchParams.set('page', String(Math.max(1, page - 1)))
+    searchParams.set('limit', String(Math.min(perPage, 250)))
     searchParams.set('tag', id)
 
     try {

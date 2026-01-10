@@ -51,34 +51,14 @@ function transformShopifyCustomer(customer: ShopifyCustomerResponse): User {
     phone: customer.default_address?.phone || '',
     avatar: '',
     role: 'customer',
-    active: customer.state === 'enabled',
+    isApproved: customer.verified_email,
+    isDeleted: false,
+    isEmailVerified: customer.verified_email,
+    isPhoneVerified: false,
+    otpAttempt: 0,
+    signInCount: 0,
     createdAt: customer.created_at,
-    billingAddress: customer.default_address ? {
-      firstName: customer.default_address.first_name,
-      lastName: customer.default_address.last_name,
-      company: customer.default_address.company,
-      address1: customer.default_address.address1,
-      address2: customer.default_address.address2,
-      city: customer.default_address.city,
-      state: customer.default_address.province,
-      country: customer.default_address.country,
-      zip: customer.default_address.zip,
-      phone: customer.default_address.phone,
-      email: customer.email
-    } : undefined,
-    shippingAddress: customer.default_address ? {
-      firstName: customer.default_address.first_name,
-      lastName: customer.default_address.last_name,
-      company: customer.default_address.company,
-      address1: customer.default_address.address1,
-      address2: customer.default_address.address2,
-      city: customer.default_address.city,
-      state: customer.default_address.province,
-      country: customer.default_address.country,
-      zip: customer.default_address.zip,
-      phone: customer.default_address.phone,
-      email: customer.email
-    } : undefined,
+    updatedAt: customer.updated_at
   }
 }
 
@@ -99,9 +79,9 @@ export class AuthService extends BaseService {
    */
   async getMe() {
     try {
-      const customer = await this.get<ShopifyCustomerResponse>('/customers/me.json')
-      this.currentUser = transformShopifyCustomer(customer)
-      return this.currentUser
+      // This would need a customer ID parameter or use a different approach
+      // For now, returning a placeholder implementation
+      throw new Error("getMe requires customer ID parameter")
     } catch (error: any) {
       console.error("Error getting current user:", error)
       throw error
@@ -194,12 +174,14 @@ export class AuthService extends BaseService {
   /**
    * Update billing address
    */
-  async updateBillingAddress(id: string, billing: any) {
+   async updateBillingAddress(id: string, billing: any) {
     try {
-      const response = await this.put<ShopifyCustomerResponse>('/customers/' + id + '/addresses.json', {
+      // For creating new address, use POST to /customers/{id}/addresses.json
+      // For updating existing address, use PUT to /customers/{id}/addresses/{address_id}.json
+      const response = await this.post<any>('/customers/' + id + '/addresses.json', {
         address: billing
       })
-      return transformShopifyCustomer(response)
+      return transformShopifyCustomer(response.customer || response)
     } catch (error: any) {
       console.error("Error updating billing address:", error)
       throw error
@@ -211,10 +193,11 @@ export class AuthService extends BaseService {
    */
   async updateShippingAddress(id: string, shipping: any) {
     try {
-      const response = await this.put<ShopifyCustomerResponse>('/customers/' + id + '/addresses.json', {
+      // For creating new address, use POST to /customers/{id}/addresses.json
+      const response = await this.post<any>('/customers/' + id + '/addresses.json', {
         address: shipping
       })
-      return transformShopifyCustomer(response)
+      return transformShopifyCustomer(response.customer || response)
     } catch (error: any) {
       console.error("Error updating shipping address:", error)
       throw error
@@ -223,15 +206,12 @@ export class AuthService extends BaseService {
 
   /**
    * Change password
+   * Note: Admin API doesn't have a direct password update endpoint for customers
+   * This requires using Storefront API or implementing custom solution
    */
   async changePassword(id: string, oldPassword: string, newPassword: string) {
     try {
-      const response = await this.put<any>('/customers/' + id + '/update_password.json', {
-        id: parseInt(id),
-        password: newPassword,
-        password_confirmation: newPassword
-      })
-      return response
+      throw new Error("Use Shopify Storefront API for password changes. Admin API doesn't support customer password updates.")
     } catch (error: any) {
       console.error("Error changing password:", error)
       throw error

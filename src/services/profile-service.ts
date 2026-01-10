@@ -8,10 +8,10 @@ export class ProfileService extends BaseService {
    * Get the singleton instance
    */
   /**
- * Get the singleton instance
- * 
- * @returns {ProfileService} The singleton instance of ProfileService
- */
+   * Get the singleton instance
+   * 
+   * @returns {ProfileService} The singleton instance of ProfileService
+   */
   static getInstance(): ProfileService {
     if (!ProfileService.instance) {
       ProfileService.instance = new ProfileService()
@@ -19,37 +19,95 @@ export class ProfileService extends BaseService {
     return ProfileService.instance
   }
 
-	async getOne() {
-		return this.get<User>('/store/customers/me')
-	}
+  /**
+   * Get current customer profile
+   * Note: Shopify Admin API doesn't have /customers/me endpoint
+   * Use Storefront API for customer access token-based authentication
+   * @param customerId - The customer ID (required for Admin API)
+   */
+  async getOne(customerId?: string) {
+    if (!customerId) {
+      throw new Error("Customer ID is required for Admin API. Use Storefront API for customer authentication.")
+    }
+    return this.get<User>('/customers/' + customerId + '.json')
+  }
 
-	async save(profile: Omit<User, 'id'>) {
-		return this.post<User>('/store/customers/me', profile)
-	}
+  /**
+   * Save customer profile
+   * @param customerId - The customer ID
+   * @param profile - The profile data to update
+   */
+  async save(customerId: string, profile: Partial<User>) {
+    return this.put<User>('/customers/' + customerId + '.json', {
+      customer: {
+        id: parseInt(customerId),
+        ...profile
+      }
+    })
+  }
 
-	async getAddresses() {
-		return this.get('/store/customers/me/addresses')
-	}
+  /**
+   * Get customer addresses
+   * @param customerId - The customer ID
+   */
+  async getAddresses(customerId: string) {
+    return this.get<any>('/customers/' + customerId + '/addresses.json')
+  }
 
-	async addAddress(address: any) {
-		return this.post('/store/customers/me/addresses', address)
-	}
+  /**
+   * Add a new address for customer
+   * @param customerId - The customer ID
+   * @param address - The address to add
+   */
+  async addAddress(customerId: string, address: any) {
+    return this.post<any>('/customers/' + customerId + '/addresses.json', { address })
+  }
 
-	async updateAddress(addressId: string, address: any) {
-		return this.post(`/store/customers/me/addresses/${addressId}`, address)
-	}
+  /**
+   * Update an existing address
+   * @param customerId - The customer ID
+   * @param addressId - The address ID to update
+   * @param address - The updated address data
+   */
+  async updateAddress(customerId: string, addressId: string, address: any) {
+    return this.put<any>('/customers/' + customerId + '/addresses/' + addressId + '.json', { address })
+  }
 
-	async deleteAddress(addressId: string) {
-		return this.delete(`/store/customers/me/addresses/${addressId}`)
-	}
+  /**
+   * Delete an address
+   * @param customerId - The customer ID
+   * @param addressId - The address ID to delete
+   */
+  async deleteAddress(customerId: string, addressId: string) {
+    return this.delete<any>('/customers/' + customerId + '/addresses/' + addressId + '.json')
+  }
 
-	async register(customerData: any) {
-		return this.post('/store/customers', customerData)
-	}
+  /**
+   * Register a new customer
+   * @param customerData - The customer data for registration
+   */
+  async register(customerData: any) {
+    return this.post<any>('/customers.json', { 
+      customer: {
+        email: customerData.email,
+        password: customerData.password,
+        first_name: customerData.firstName,
+        last_name: customerData.lastName,
+        phone: customerData.phone,
+        verified_email: true,
+        accepts_marketing: false
+      }
+    })
+  }
 
-	async getAddress(addressId: string) {
-		return this.get(`/store/customers/me/addresses/${addressId}`)
-	}
+  /**
+   * Get a specific address
+   * @param customerId - The customer ID
+   * @param addressId - The address ID
+   */
+  async getAddress(customerId: string, addressId: string) {
+    return this.get<any>('/customers/' + customerId + '/addresses/' + addressId + '.json')
+  }
 }
 
 export const profileService = ProfileService.getInstance()

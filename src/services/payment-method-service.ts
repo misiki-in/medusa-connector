@@ -1,17 +1,61 @@
 import { PAGE_SIZE, paymentMethodFromId } from '../config'
-import { PaginatedMedusaResponse } from '../types/api-response'
 import type { PaymentMethod, PaginatedResponse } from './../types'
 import { BaseService } from './base-service'
 
 /**
- * PaymentMethodService provides functionality for working with specific resources
- * in the Litekart API.
+ * PaymentMethodService provides functionality for working with payment methods
+ * in the Shopify platform.
  *
- * This service helps with:
- * - Main functionality point 1
- * - Main functionality point 2
- * - Main functionality point 3
+ * Note: Shopify Admin API doesn't expose payment gateways directly.
+ * Payment methods are configured in Shopify admin panel.
+ * This service returns common payment methods that work with Shopify.
  */
+
+/**
+ * Common payment methods available in Shopify stores
+ */
+const COMMON_PAYMENT_METHODS: PaymentMethod[] = [
+  {
+    id: 'credit_card',
+    name: 'Credit Card',
+    code: 'credit_card',
+    description: 'Pay with Visa, Mastercard, American Express',
+    active: true,
+    type: 'card',
+    apiKey: null,
+    img: '/static/payment/credit-card.png'
+  },
+  {
+    id: 'paypal',
+    name: 'PayPal',
+    code: 'paypal',
+    description: 'Pay with your PayPal account',
+    active: true,
+    type: 'paypal',
+    apiKey: null,
+    img: '/static/payment/paypal.png'
+  },
+  {
+    id: 'cod',
+    name: 'Cash on Delivery',
+    code: 'cod',
+    description: 'Pay when you receive your order',
+    active: true,
+    type: 'cod',
+    apiKey: null,
+    img: '/static/payment/cod.png'
+  },
+  {
+    id: 'bank_transfer',
+    name: 'Bank Transfer',
+    code: 'bank_transfer',
+    description: 'Direct bank transfer payment',
+    active: true,
+    type: 'bank',
+    apiKey: null,
+    img: '/static/payment/bank.png'
+  },
+]
 
 export function transformIntoPaymentMethod(met: Record<string, string>): PaymentMethod {
   return {
@@ -26,42 +70,45 @@ export class PaymentMethodService extends BaseService {
   /**
    * Get the singleton instance
    */
-  /**
- * Get the singleton instance
- * 
- * @returns {PaymentMethodService} The singleton instance of PaymentMethodService
- */
   static getInstance(): PaymentMethodService {
     if (!PaymentMethodService.instance) {
       PaymentMethodService.instance = new PaymentMethodService()
     }
     return PaymentMethodService.instance
   }
+
   /**
- * Fetches PaymentMethod from the API
- * 
- * @param {Object} options - The request options
- * @param {number} [options.page=1] - The page number for pagination
- * @param {string} [options.q=''] - Search query string
- * @param {string} [options.sort='-createdAt'] - Sort order
- * @returns {Promise<any>} The requested data
- * @api {get} /api/paymentmethod Get paymentmethod
- * 
- * @example
- * // Example usage
- * const result = await paymentmethodService.list({ page: 1 });
- */
-  async list({ page = 1, q = '', sort = '-createdAt' }) {
-    const res = await this.get<any>(`/store/payment-providers?region_id=` + BaseService.getRegionId())
+   * List available payment methods
+   * Note: Shopify Admin API doesn't have a payment_gateways endpoint
+   * Returns common payment methods available in Shopify
+   */
+  async list({ page = 1, q = '', sort = '-createdAt' }: { page?: number; q?: string; sort?: string } = {}) {
+    // Filter by search query if provided
+    let filteredMethods = COMMON_PAYMENT_METHODS
+    if (q) {
+      const searchLower = q.toLowerCase()
+      filteredMethods = COMMON_PAYMENT_METHODS.filter(
+        m => m.name.toLowerCase().includes(searchLower) || 
+             m.description.toLowerCase().includes(searchLower)
+      )
+    }
+
     return {
-      count: res.count,
-      data: res.payment_providers.map(transformIntoPaymentMethod),
+      count: filteredMethods.length,
+      data: filteredMethods,
       pageSize: PAGE_SIZE,
       page,
     }
+  }
+
+  /**
+   * Get a specific payment method by ID
+   * @param id - The payment method ID
+   */
+  async getById(id: string): Promise<PaymentMethod | null> {
+    return COMMON_PAYMENT_METHODS.find(m => m.id === id) || null
   }
 }
 
 // Use singleton instance
 export const paymentMethodService = PaymentMethodService.getInstance()
-

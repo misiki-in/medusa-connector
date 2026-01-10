@@ -1,12 +1,12 @@
 export const PUBLIC_SHOPIFY_API_PREFIX = "/admin/api/2024-10"
 
-export const SHOPIFY_STORE_DOMAIN: string
+export let SHOPIFY_STORE_DOMAIN: string
 
-export const SHOPIFY_ACCESS_TOKEN: string
+export let SHOPIFY_ACCESS_TOKEN: string
 
 /**
  * BaseService provides core HTTP functionality for all service classes
- * in the Shopify API client.
+ * in the Shopify Admin API client.
  *
  * This service helps with:
  * - Performing standardized HTTP requests (GET, POST, PUT, PATCH, DELETE)
@@ -24,7 +24,7 @@ export class BaseService {
    */
   constructor(fetchFn?: typeof fetch) {
     // Use provided fetch or global fetch as fallback
-    this._fetch = fetchFn || fetch
+    this._fetch = fetchFn || (typeof fetch !== 'undefined' ? fetch : () => Promise.reject(new Error('fetch not available')))
   }
 
   static setShopifyCredentials(storeDomain: string, accessToken: string) {
@@ -34,7 +34,7 @@ export class BaseService {
 
   static getCredentials() {
     if (!SHOPIFY_STORE_DOMAIN || !SHOPIFY_ACCESS_TOKEN) {
-      throw "Shopify credentials not set. Call BaseService.setShopifyCredentials() first"
+      throw new Error("Shopify credentials not set. Call BaseService.setShopifyCredentials() first")
     }
     return { storeDomain: SHOPIFY_STORE_DOMAIN, accessToken: SHOPIFY_ACCESS_TOKEN }
   }
@@ -61,34 +61,34 @@ export class BaseService {
 
   private async safeFetch(url: string, data?: any) {
     try {
-      return await this._fetch(`https://${SHOPIFY_STORE_DOMAIN}${PUBLIC_SHOPIFY_API_PREFIX}${url}`, data)
+      const response = await this._fetch(`https://${SHOPIFY_STORE_DOMAIN}${PUBLIC_SHOPIFY_API_PREFIX}${url}`, data)
+      return response
     } catch (e: any) {
-      if (navigator.onLine) {
-        throw { message: 'Please check your internet connection and try again' }
-      }
-      throw { message: 'Unable to reach the server. Please try again in a moment' }
+      throw new Error(`Network error: ${e.message || 'Unable to reach the server. Please try again in a moment'}`)
     }
   }
 
   private async handleError(response: Response) {
-    if (!response.headers.get("Content-Type")?.startsWith("application/json"))
+    if (!response.headers.get("Content-Type")?.startsWith("application/json")) {
       throw new Error(`HTTP error ${response.status}: ${response.statusText}`)
+    }
 
-    const data = await response.json()
-    throw { message: 'Something went wrong. Please try again', ...data }
+    try {
+      const data = await response.json()
+      throw new Error(data.errors || `HTTP error ${response.status}: ${response.statusText}`)
+    } catch {
+      throw new Error(`HTTP error ${response.status}: ${response.statusText}`)
+    }
   }
 
-  async callFetch<T>(url: string, body: any) {
+  async callFetch<T>(url: string, body: any): Promise<T> {
     const { storeDomain, accessToken } = BaseService.getCredentials()
-    
-    const authHeader = 'Basic ' + btoa(accessToken + ':')
     
     const response = await this.safeFetch(url, {
       ...body,
       headers: {
         ...body.headers,
         'X-Shopify-Access-Token': accessToken,
-        'Authorization': authHeader,
         'Content-Type': 'application/json'
       }
     })
@@ -99,7 +99,7 @@ export class BaseService {
 
     // Handle empty responses
     const text = await response.text()
-    return text ? JSON.parse(text) as T : null
+    return text ? JSON.parse(text) as T : {} as T
   }
   /**
    * Perform a GET request

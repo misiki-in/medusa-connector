@@ -1,28 +1,36 @@
-import { AxiosError } from 'axios';
 import type { Region } from '../types'
-import { ApiService } from './api-service'
+import { BaseService } from './base-service'
 
-export class RegionService {
+export class RegionService extends BaseService {
+	private static instance: RegionService
+
+	static getInstance(): RegionService {
+		if (!RegionService.instance) {
+			RegionService.instance = new RegionService()
+		}
+		return RegionService.instance
+	}
+
 	/**
 	 * Get region information by region ID
-	 * @param id - Region ID
+	 * Note: Shopify doesn't have regions like Medusa, this returns countries
+	 * @param id - Region ID (treated as country code)
 	 * @returns Region details
 	 */
-	static async getRegionByRegionId(id: string) {
+	async getRegionByRegionId(id: string) {
 		try {
-			const response = await ApiService.get<{ region: Region }>(
-        `/store/regions/${id}`
+			const response = await this.get<{ countries: any[] }>(
+        `/countries/${id}.json`
       );
 
-			return response
+			return {
+				id: id,
+				name: response.countries[0]?.name || 'Unknown Region',
+				currency_code: response.countries[0]?.currency || 'USD',
+				countries: response.countries
+			}
 		} catch (error) {
-      const axiosError = error as AxiosError;
-			console.error(
-        "Error fetching region:",
-        axiosError?.response?.data || axiosError?.message,
-        "Request Config:",
-        axiosError?.config
-      );
+			console.error("Error fetching region:", error);
 			// Return default data on error
 			return {
 				id: 'error-placeholder',
@@ -35,21 +43,23 @@ export class RegionService {
 
 	/**
 	 * List all available regions
+	 * Note: Shopify doesn't have regions like Medusa, this returns countries
 	 * @returns Available regions
 	 */
-	static async listRegions() {
+	async listRegions() {
 		try {
-			const response = await ApiService.get<{regions: Region[]}>(`/store/regions`)
+			const response = await this.get<{countries: any[]}>(`/countries.json`)
 
-			return response
+			return {
+				regions: response.countries.map(country => ({
+					id: country.code,
+					name: country.name,
+					currency_code: country.currency,
+					countries: [country]
+				}))
+			}
 		} catch (error) {
-      const axiosError = error as AxiosError;
-			console.error(
-        "Error fetching regions:",
-        axiosError?.response?.data || axiosError?.message,
-        "Request Config:",
-        axiosError?.config
-      );
+			console.error("Error fetching regions:", error);
 			return {
 				regions: []
 			}

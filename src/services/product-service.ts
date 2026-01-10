@@ -188,10 +188,9 @@ export class ProductService extends BaseService {
     status = ''
   } = {}) {
     const searchParams = new URLSearchParams()
-    searchParams.set('limit', String(perPage))
-    searchParams.set('page', String(Math.max(1, page - 1))) // Shopify uses 0-based pagination
+    searchParams.set('limit', String(Math.min(perPage, 250))) // Shopify max limit is 250
     
-    if (search) searchParams.set('title', search)
+    if (search) searchParams.set('title', `*${search}*`) // Shopify fuzzy search
     if (category) searchParams.set('collection_id', category)
     if (featured) searchParams.set('tag', 'featured')
     if (tag) searchParams.set('tag', tag)

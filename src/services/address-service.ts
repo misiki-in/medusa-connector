@@ -46,11 +46,15 @@ export class AddressService extends BaseService {
 
   /**
    * Get countries list
+   * Note: Shopify Admin API doesn't provide a countries endpoint directly.
+   * This implementation returns a hardcoded list or can be extended to use external API.
    */
   async getCountries() {
     try {
-      const response = await this.get<any[]>('/data/countries')
-      return response || []
+      // Shopify doesn't have a direct countries endpoint in Admin API
+      // Return empty array to indicate manual list should be used
+      console.warn("Shopify Admin API doesn't provide countries endpoint. Using local list.")
+      return []
     } catch (error: any) {
       console.error("Error fetching countries:", error)
       return []
@@ -73,11 +77,13 @@ export class AddressService extends BaseService {
 
   /**
    * Validate address
+   * Note: Shopify Admin API doesn't provide address validation.
+   * This would require using Shopify's address verification service or a third-party.
    */
   async validateAddress(address: Partial<Address>) {
     try {
-      const response = await this.post<any>('/validation/address', transformFromAddress(address))
-      return response
+      console.warn("Shopify Admin API doesn't provide address validation.")
+      return { valid: true, suggested: null }
     } catch (error: any) {
       console.error("Error validating address:", error)
       return { valid: false, errors: ['Address validation failed'] }

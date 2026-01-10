@@ -137,8 +137,7 @@ export class CategoryService extends BaseService {
    */
   async fetchAllProductsOfCategory(id: string, { page = 1, perPage = PAGE_SIZE } = {}) {
     const searchParams = new URLSearchParams()
-    searchParams.set('limit', String(perPage))
-    searchParams.set('page', String(Math.max(1, page - 1)))
+    searchParams.set('limit', String(Math.min(perPage, 250)))
 
     const res = await this.get<any>('/collections/' + id + '/products.json?' + searchParams.toString())
     

@@ -1,7 +1,7 @@
 import { orderFromSort } from "../config"
 import { ProductSearchResult } from "../types/product-search"
 import { BaseService } from "./base-service"
-import { transformProduct } from "./product-service"
+import { transformShopifyProduct } from "./product-service"
 
 function getOrderbFromSort(value: string): string {
   const arr = value?.split(':')
@@ -109,29 +109,32 @@ export class SearchService extends BaseService {
       */
 
       const newSearchParams = new URLSearchParams()
-      newSearchParams.set('fields', '+variants.calculated_price')
-      newSearchParams.set('region_id', BaseService.getRegionId())
-      const order = getOrderbFromSort(searchParams.get('sort') || '')
-      if (order)
-        newSearchParams.set('order', order)
-      newSearchParams.set('q', searchParams.get('q') || "")
+      newSearchParams.set('limit', '50') // Shopify max limit
+      const query = searchParams.get('q') || searchParams.get('search') || ''
+      if (query) newSearchParams.set('title', `*${query}*`) // Shopify fuzzy search
+      
+      // Add tag filter if present
+      const tags = searchParams.get('tags') || searchParams.get('tag')
+      if (tags) newSearchParams.set('tag', tags)
+      
+      // Add vendor filter if present
+      const vendor = searchParams.get('vendor')
+      if (vendor) newSearchParams.set('vendor', vendor)
 
-      if (slug)
-        newSearchParams.set('category_id', slug)
+      // Add collection filter if present
+      const category = slug || searchParams.get('categories') || searchParams.get('collection')
+      if (category) newSearchParams.set('collection_id', category)
 
-      const res = await this.get<any>(`/store/products?` + newSearchParams.toString())
+      const res = await this.get<any>(`/products.json?` + newSearchParams.toString())
 
       return {
-        data: (res?.products || []).map(transformProduct),
-        count: res?.count || res?.totalHits || res?.estimatedTotalHits || 0,
-        totalPages: res?.totalPages || 0,
-        categoryHierarchy: res?.categories || [],
-        categories: res?.categories || [],
+        data: (res?.products || []).map(transformShopifyProduct),
+        count: res?.products?.length || 0,
+        totalPages: 1,
+        categoryHierarchy: [],
+        categories: [],
         facets: {
-          priceStat: {
-            //min: res?.allfacetStats?.price?.min,
-            //max: res?.allfacetStats?.price?.max
-          },
+          priceStat: {},
           categories: [],
           tags: [],
           allFilters: {},
@@ -161,22 +164,19 @@ export class SearchService extends BaseService {
   async searchWithQuery(query: string) {
     try {
       const newSearchParams = new URLSearchParams()
-      newSearchParams.set('fields', '+variants.calculated_price')
-      newSearchParams.set('region_id', BaseService.getRegionId())
-      newSearchParams.set('q', query)
-      const res = await this.get<any>(`/store/products?` + newSearchParams.toString())
+      newSearchParams.set('limit', '50')
+      newSearchParams.set('title', `*${query}*`) // Shopify fuzzy search
+      
+      const res = await this.get<any>(`/products.json?` + newSearchParams.toString())
 
-            return {
-        data: (res?.products || []).map(transformProduct),
-        count: res?.count || res?.totalHits || res?.estimatedTotalHits || 0,
-        totalPages: res?.totalPages || 0,
-        categoryHierarchy: res?.categories || [],
-        categories: res?.categories || [],
+      return {
+        data: (res?.products || []).map(transformShopifyProduct),
+        count: res?.products?.length || 0,
+        totalPages: 1,
+        categoryHierarchy: [],
+        categories: [],
         facets: {
-          priceStat: {
-            //min: res?.allfacetStats?.price?.min,
-            //max: res?.allfacetStats?.price?.max
-          },
+          priceStat: {},
           categories: [],
           tags: [],
           allFilters: {},
@@ -184,7 +184,7 @@ export class SearchService extends BaseService {
       }
     } catch (error) {
       console.error(error)
-      // Return a valid empty result object
+      // Return a valid empty result
       return this.emptyResult()
     }
   }

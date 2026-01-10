@@ -1,4 +1,3 @@
-import { AxiosError } from 'axios'
 import type { User } from '../types'
 import { BaseService } from './base-service'
 
@@ -7,16 +6,22 @@ type UserExtended = {
   role: string
 } | User
 
+// Browser-compatible cookie functions (no-op in Node.js)
 function deleteMeCookie() {
-  document.cookie = 'me=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+  if (typeof document !== 'undefined') {
+    document.cookie = 'me=;expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+  }
 }
+
 function saveUserAsMeCookie(user: UserExtended) {
-  const me = encodeURIComponent(JSON.stringify(user))
-  document.cookie = 'me=' + me
+  if (typeof document !== 'undefined') {
+    const me = encodeURIComponent(JSON.stringify(user))
+    document.cookie = 'me=' + me
+  }
 }
 
 function customerToUser(customer: Record<string, any>): UserExtended {
-  return { ...customer, userId: customer.id, role: "USER" }
+  return { ...customer, userId: customer.id?.toString() || '', role: "USER" }
 }
 
 export class UserService extends BaseService {
@@ -34,22 +39,22 @@ export class UserService extends BaseService {
     return UserService.instance
   }
 
-  // Get current authenticated user (admin)
+  // Get current authenticated user (requires customer access token via Storefront API)
   async getMe() {
-    return this.get<User>('/admin/users/me')
+    throw new Error("Use Shopify Storefront API for customer authentication. Admin API doesn't support customer login.")
   }
 
-  // Get specific user by ID (admin only)
+  // Get specific user by ID (admin only - requires different token)
   async getUser(id: string) {
-    return this.get<User>(`/admin/users/${id}`)
+    return this.get<any>(`/customers/${id}.json`).then((customer) => customerToUser(customer))
   }
 
-  // Customer registration
+  // Customer registration via Admin API (creates customer account)
   async signup({
     firstName,
     lastName,
     phone,
-email,
+    email,
     password,
     cartId = null
   }: {
@@ -61,42 +66,25 @@ email,
     cartId?: string | null
   }) {
     try {
-      const registerRes = await this.post<{ token: string }>('/auth/customer/emailpass/register', {
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        email,
-        password,
-        cart_id: cartId
-      })
-      const createRes = await this.callFetch<any>('/store/customers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${registerRes.token}`,
-        },
-        body: JSON.stringify({
+      // Create customer via Admin API
+      const createRes = await this.post<any>('/customers.json', {
+        customer: {
           first_name: firstName,
           last_name: lastName,
           phone,
           email,
-        })
-      })
-      const authRes = await this.post<{ token: string }>('/auth/customer/emailpass', {
-        email,
-        password,
-        cart_id: cartId
-      })
-      const sessionRes = await this.callFetch('/auth/session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authRes.token}`,
-          'SameSite': 'None'
-        },
+          password,
+          verified_email: true,
+          accepts_marketing: false
+        }
       })
       const user = customerToUser(createRes.customer)
-      saveUserAsMeCookie(user)
+      
+      // Only save cookie in browser environment
+      if (typeof document !== 'undefined') {
+        saveUserAsMeCookie(user)
+      }
+      
       return user
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Failed to signup'
@@ -104,45 +92,22 @@ email,
     }
   }
 
-  // Login for customer
+  // Login for customer - requires Storefront API for authentication
   async login({ email, password, cartId = null }: { email: string; password: string; cartId?: string | null }) {
-    const authRes = await this.post<{ token: string }>('/auth/customer/emailpass', {
-      email,
-      password,
-      cart_id: cartId
-    })
-    const sessionRes = await this.callFetch('/auth/session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authRes.token}`,
-      },
-    });
-    const meRes = await this.callFetch<any>('store/customers/me', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    })
-    const user = customerToUser(meRes.customer)
-    saveUserAsMeCookie(user)
-    return user
+    throw new Error("Use Shopify Storefront API for customer authentication. Admin API doesn't support password-based login.")
   }
 
-  // Logout (handled client-side in Medusa by removing the auth token)
+  // Logout (clears local user state)
   async logout() {
-    const res = await this.delete<{ success: boolean }>('/auth/session')
-    deleteMeCookie()
-    if (res.success) return null
-    else console.error('Failed to delete session')
+    if (typeof document !== 'undefined') {
+      deleteMeCookie()
+    }
     return null
   }
 
-  // Forgot password (customer)
+  // Forgot password (customer) - requires Storefront API
   async forgotCustomerPassword(email: string) {
-    return this.post<void>('/auth/customer/emailpass/reset-password', {
-      email
-    })
+    throw new Error("Use Shopify Storefront API for password reset functionality.")
   }
 
   async joinAsVendor({
@@ -181,16 +146,12 @@ email,
     */
   }
 
-  // Reset password (customer)
+  // Reset password (customer) - requires Storefront API
   async resetPassword({ token, email, password }: { token: string; email: string; password: string }) {
-    return this.post<User>('/auth/customer/emailpass/update', {
-      token,
-      email,
-      password
-    })
+    throw new Error("Use Shopify Storefront API for password reset functionality.")
   }
 
-  // Update user profile (admin)
+  // Update user profile via Admin API
   async updateProfile({
     id,
     firstName,
@@ -204,89 +165,32 @@ email,
     email: string
     phone: string
   }) {
-    return this.put<User>(`/admin/users/${id}`, {
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      phone
-    })
+    return this.put<any>(`/customers/${id}.json`, {
+      customer: {
+        id: parseInt(id),
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone
+      }
+    }).then((customer) => customerToUser(customer))
   }
 
   // Check if email exists (customer)
   async checkEmail(email: string) {
     try {
-      return this.post<{ exists: boolean }>('/auth/customer/emailpass/exists', { email })
+      const res = await this.get<any>(`/customers/search.json?query=email:${email}`)
+      return { exists: res.customers?.length > 0 }
     } catch (e) {
-      const axiosError = e as AxiosError
-      throw new Error(axiosError?.message || "Failed to check email");
+      const error = e as Error
+      throw new Error(error?.message || "Failed to check email");
     }
   }
 
-  // Delete user (admin)
+  // Delete user (admin only)
   async deleteUser(id: string) {
-    return this.delete<User>(`/admin/users/${id}`)
+    throw new Error("Customer deletion requires Admin API with appropriate permissions.")
   }
 }
 
 export const userService = UserService.getInstance()
-
-/*
-    // Invite admin user
-  static async inviteUser(email: string) {
-    return ApiService.post<User>('/admin/users/invite', {
-      email
-    })
-  }
-
-  // Accept admin invite
-  static async acceptInvite({
-    token,
-    user
-  }: {
-    token: string
-    user: {
-      first_name: string
-      last_name: string
-      password: string
-    }
-  }) {
-    return ApiService.post<User>('/admin/users/invite/accept', {
-      token,
-      user
-    })
-  }
-
-  // Admin user creation (typically done through invites)
-  async createAdminUser({ firstName, lastName, email }: { firstName: string; lastName: string; email: string }) {
-    return ApiService.post<User>('/admin/users', {
-      first_name: firstName,
-      last_name: lastName,
-      email
-    })
-  }
-
-  // Login for admin user
-  static async adminLogin({ email, password }: { email: string; password: string }) {
-    return ApiService.post<{ user: User }>('/auth/user/emailpass', {
-      email,
-      password
-    })
-  }
-
-  // Forgot password (admin)
-  static async forgotAdminPassword(email: string) {
-    return ApiService.post<void>('/auth/user/emailpass/reset-password', {
-      email
-    })
-  }
-
-  // Reset password (admin)
-  static async resetAdminPassword({ token, email, password }: { token: string; email: string; password: string }) {
-    return ApiService.post<User>('/auth/user/emailpass/update', {
-      token,
-      email,
-      password
-    })
-  }
-
-*/
